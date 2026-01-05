@@ -35,6 +35,12 @@ from email import encoders
 
 import numpy as np
 import pyaudio
+try:
+    import alsaaudio
+    ALSA_AVAILABLE = True
+except ImportError:
+    ALSA_AVAILABLE = False
+    print("警告: alsaaudioが見つかりません。PyAudioで出力します。")
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
@@ -93,12 +99,15 @@ CONFIG = {
     "receive_sample_rate": 24000,  # 出力: 24kHz
     "input_sample_rate": 44100,    # マイク入力: 44.1kHz
     "output_sample_rate": 48000,   # スピーカー出力: 48kHz
-    "channels": 1,
+    "input_channels": 1,           # マイク入力: モノラル
+    "output_channels": 2,          # スピーカー出力: ステレオ（USBスピーカー要件）
     "chunk_size": 1024,
 
     # デバイス設定
     "input_device_index": None,
     "output_device_index": None,
+    "alsa_output_device": "hw:2,0",  # UACDemoV1.0 USB スピーカー
+    "alsa_input_device": "hw:3,0",   # USB PnP Sound Device マイク
 
     # GPIO設定
     "button_pin": 5,
@@ -276,6 +285,14 @@ def resample_audio(audio_data, from_rate, to_rate):
     resampled = np.interp(indices, np.arange(original_length), audio_array)
 
     return resampled.astype(np.int16).tobytes()
+
+
+def mono_to_stereo(audio_data):
+    """モノラル音声をステレオに変換"""
+    audio_array = np.frombuffer(audio_data, dtype=np.int16)
+    # 左右チャンネルに同じ音声を設定
+    stereo = np.column_stack((audio_array, audio_array))
+    return stereo.astype(np.int16).tobytes()
 
 
 # ==================== Gmail機能 ====================
@@ -817,7 +834,7 @@ def record_voice_message_sync():
     try:
         stream = audio.open(
             format=pyaudio.paInt16,
-            channels=CONFIG["channels"],
+            channels=CONFIG["input_channels"],
             rate=CONFIG["input_sample_rate"],  # 44100Hz
             input=True,
             input_device_index=input_device,
@@ -877,7 +894,7 @@ def record_voice_message_sync():
     # WAV形式に変換
     wav_buffer = io.BytesIO()
     with wave.open(wav_buffer, 'wb') as wf:
-        wf.setnchannels(CONFIG["channels"])
+        wf.setnchannels(CONFIG["input_channels"])
         wf.setsampwidth(2)  # 16bit
         wf.setframerate(CONFIG["input_sample_rate"])  # 44100Hz
         wf.writeframes(b''.join(frames))
@@ -1568,12 +1585,12 @@ def get_gemini_tools():
 # ==================== オーディオハンドラ ====================
 
 class GeminiAudioHandler:
-    """Gemini Live API用音声処理ハンドラ"""
+    """Gemini Live API用音声処理ハンドラ (alsaaudio使用)"""
 
     def __init__(self):
-        self.audio = pyaudio.PyAudio()
+        self.audio = pyaudio.PyAudio()  # マイク入力用
         self.input_stream = None
-        self.output_stream = None
+        self.alsa_output = None  # ALSA出力用
         self.is_recording = False
         self.is_playing = False
 
@@ -1589,7 +1606,7 @@ class GeminiAudioHandler:
         try:
             self.input_stream = self.audio.open(
                 format=pyaudio.paInt16,
-                channels=CONFIG["channels"],
+                channels=CONFIG["input_channels"],
                 rate=CONFIG["input_sample_rate"],
                 input=True,
                 input_device_index=input_device,
@@ -1625,42 +1642,52 @@ class GeminiAudioHandler:
         return None
 
     def start_output_stream(self):
-        output_device = CONFIG["output_device_index"]
-        if output_device is None:
-            output_device = find_audio_device(self.audio, "output")
+        """ALSAを使用してスピーカー出力を開始"""
+        if not ALSA_AVAILABLE:
+            print("警告: alsaaudioが利用できません")
+            return
 
-        self.output_stream = self.audio.open(
-            format=pyaudio.paInt16,
-            channels=CONFIG["channels"],
-            rate=CONFIG["output_sample_rate"],
-            output=True,
-            output_device_index=output_device,
-            frames_per_buffer=CONFIG["chunk_size"] * 2
-        )
-        self.is_playing = True
-        print("スピーカー出力開始")
+        try:
+            alsa_device = CONFIG["alsa_output_device"]
+            self.alsa_output = alsaaudio.PCM(
+                type=alsaaudio.PCM_PLAYBACK,
+                mode=alsaaudio.PCM_NORMAL,
+                device=alsa_device,
+                channels=CONFIG["output_channels"],
+                rate=CONFIG["output_sample_rate"],
+                format=alsaaudio.PCM_FORMAT_S16_LE,
+                periodsize=CONFIG["chunk_size"] * 2
+            )
+            self.is_playing = True
+            print(f"スピーカー出力開始 (ALSA: {alsa_device})")
+        except Exception as e:
+            print(f"ALSA出力エラー: {e}")
+            self.alsa_output = None
+            self.is_playing = False
 
     def stop_output_stream(self):
-        if self.output_stream:
+        if self.alsa_output:
             self.is_playing = False
-            self.output_stream.stop_stream()
-            self.output_stream.close()
-            self.output_stream = None
+            self.alsa_output.close()
+            self.alsa_output = None
             print("スピーカー出力停止")
 
     def play_audio_chunk(self, audio_data):
-        """Gemini出力（24kHz）を48kHzにリサンプリングして再生"""
-        if self.output_stream and self.is_playing:
+        """Gemini出力（24kHz モノラル）を48kHz ステレオにリサンプリングして再生"""
+        if self.alsa_output and self.is_playing:
             try:
                 resampled = resample_audio(audio_data, CONFIG["receive_sample_rate"], CONFIG["output_sample_rate"])
-                self.output_stream.write(resampled)
+                # ステレオ出力の場合はモノラルをステレオに変換
+                if CONFIG["output_channels"] == 2:
+                    resampled = mono_to_stereo(resampled)
+                self.alsa_output.write(resampled)
             except Exception as e:
                 print(f"音声再生エラー: {e}")
 
     def play_audio_buffer(self, audio_data):
         """
         完全な音声バッファを再生（WAVデータ）
-        既存の出力ストリームを使用
+        ALSAを使用
         """
         if audio_data is None:
             print("音声データがありません")
@@ -1672,6 +1699,7 @@ class GeminiAudioHandler:
             wav_buffer = io.BytesIO(audio_data)
             with wave.open(wav_buffer, 'rb') as wf:
                 original_rate = wf.getframerate()
+                original_channels = wf.getnchannels()
                 frames = wf.readframes(wf.getnframes())
 
                 # 必要に応じてリサンプリング
@@ -1683,11 +1711,15 @@ class GeminiAudioHandler:
                     resampled = audio_np[indices]
                     frames = resampled.astype(np.int16).tobytes()
 
-                # 既存の出力ストリームに書き込み
-                if self.output_stream and self.is_playing:
+                # ステレオ出力の場合、モノラルをステレオに変換
+                if CONFIG["output_channels"] == 2 and original_channels == 1:
+                    frames = mono_to_stereo(frames)
+
+                # ALSAを使用して再生
+                if self.alsa_output and self.is_playing:
                     chunk_size = 4096
                     for i in range(0, len(frames), chunk_size):
-                        self.output_stream.write(frames[i:i+chunk_size])
+                        self.alsa_output.write(frames[i:i+chunk_size])
                 else:
                     print("出力ストリームが利用不可")
 
@@ -1718,6 +1750,7 @@ class GeminiLiveClient:
 
         self.audio_handler = audio_handler
         self.session = None
+        self.session_context = None  # コンテキストマネージャーを保持
         self.is_connected = False
         self.is_responding = False
         self.pending_tool_calls = {}
@@ -1747,10 +1780,12 @@ class GeminiLiveClient:
         print(f"Gemini Live APIに接続中... ({CONFIG['model']})")
 
         try:
-            self.session = await self.client.aio.live.connect(
+            # live.connect()はコンテキストマネージャーを返すので、__aenter__()で入る
+            self.session_context = self.client.aio.live.connect(
                 model=CONFIG["model"],
                 config=self.get_config()
             )
+            self.session = await self.session_context.__aenter__()
             self.is_connected = True
             self.loop = asyncio.get_event_loop()
             print("Gemini Live API接続完了")
@@ -1885,11 +1920,12 @@ class GeminiLiveClient:
                 await self.send_tool_response(function_responses)
 
     async def disconnect(self):
-        if self.session:
+        if self.session_context:
             try:
-                await self.session.close()
+                await self.session_context.__aexit__(None, None, None)
             except Exception:
                 pass
+            self.session_context = None
             self.session = None
             self.is_connected = False
             print("Gemini Live API切断")
