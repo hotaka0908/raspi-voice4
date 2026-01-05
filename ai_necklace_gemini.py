@@ -85,7 +85,7 @@ GMAIL_SCOPES = [
 # 設定
 CONFIG = {
     # Gemini Live API設定
-    "model": "gemini-2.5-flash-preview-native-audio-dialog",  # または "gemini-2.0-flash-live-001"
+    "model": "gemini-2.5-flash-native-audio-preview-12-2025",
     "voice": "Kore",  # Gemini voice options: Puck, Charon, Kore, Fenrir, Aoede
 
     # オーディオ設定 (Gemini Live API仕様)
@@ -1801,13 +1801,20 @@ class GeminiLiveClient:
         global running
 
         try:
-            async for response in self.session.receive():
-                if not running:
-                    break
+            while running and self.is_connected:
+                try:
+                    # receive()はイテレータを返す
+                    turn = self.session.receive()
+                    async for response in turn:
+                        if not running:
+                            break
 
-                await self.handle_response(response)
-                # 正常にメッセージを受信できたら再接続カウントをリセット
-                self.reconnect_count = 0
+                        await self.handle_response(response)
+                        # 正常にメッセージを受信できたら再接続カウントをリセット
+                        self.reconnect_count = 0
+                except StopAsyncIteration:
+                    # ターンが終了した場合、次のターンを待つ
+                    continue
 
         except Exception as e:
             print(f"受信エラー: {e}")

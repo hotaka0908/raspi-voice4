@@ -160,7 +160,7 @@ sudo journalctl -u ai-necklace-gemini -f
 
 ### Gemini Live API
 
-- モデル: `gemini-2.5-flash-preview-native-audio-dialog`
+- モデル: `gemini-2.5-flash-native-audio-preview-12-2025`
 - 音声: Kore（日本語対応）
 - セッション時間: 最大15分（音声のみ）
 

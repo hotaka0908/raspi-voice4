@@ -7,6 +7,7 @@
 
 const { onObjectFinalized } = require("firebase-functions/v2/storage");
 const { onRequest } = require("firebase-functions/v2/https");
+const { defineSecret } = require("firebase-functions/params");
 const { initializeApp } = require("firebase-admin/app");
 const { getDatabase } = require("firebase-admin/database");
 const { getStorage } = require("firebase-admin/storage");
@@ -15,8 +16,8 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 // Firebase Admin初期化
 initializeApp();
 
-// Gemini API初期化
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+// シークレット定義
+const googleApiKey = defineSecret("GOOGLE_API_KEY");
 
 /**
  * ライフログ写真分析関数
@@ -29,6 +30,7 @@ exports.analyzeLifelogPhoto = onObjectFinalized(
     region: "asia-northeast1",
     memory: "512MiB",
     timeoutSeconds: 120,
+    secrets: [googleApiKey],
   },
   async (event) => {
     const filePath = event.data.name;
@@ -48,6 +50,9 @@ exports.analyzeLifelogPhoto = onObjectFinalized(
     console.log("Analyzing lifelog photo:", filePath);
 
     try {
+      // Gemini API初期化（シークレットから取得）
+      const genAI = new GoogleGenerativeAI(googleApiKey.value());
+
       // Storage から画像をダウンロード
       const bucket = getStorage().bucket(event.data.bucket);
       const file = bucket.file(filePath);
@@ -167,6 +172,7 @@ exports.analyzePhotoManual = onRequest(
     region: "asia-northeast1",
     memory: "512MiB",
     timeoutSeconds: 120,
+    secrets: [googleApiKey],
   },
   async (req, res) => {
     if (req.method !== "POST") {
@@ -181,6 +187,9 @@ exports.analyzePhotoManual = onRequest(
     }
 
     try {
+      // Gemini API初期化（シークレットから取得）
+      const genAI = new GoogleGenerativeAI(googleApiKey.value());
+
       const bucket = getStorage().bucket();
       const file = bucket.file(path);
 
