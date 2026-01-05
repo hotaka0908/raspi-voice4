@@ -95,19 +95,16 @@ CONFIG = {
     "voice": "Kore",  # Gemini voice options: Puck, Charon, Kore, Fenrir, Aoede
 
     # オーディオ設定 (Gemini Live API仕様)
-    "send_sample_rate": 16000,    # 入力: 16kHz
-    "receive_sample_rate": 24000,  # 出力: 24kHz
-    "input_sample_rate": 44100,    # マイク入力: 44.1kHz
+    "send_sample_rate": 16000,    # Gemini入力: 16kHz
+    "receive_sample_rate": 24000,  # Gemini出力: 24kHz
+    "input_sample_rate": 48000,    # マイク入力: 48kHz（16kHzへの3倍ダウンサンプリングで高品質）
     "output_sample_rate": 48000,   # スピーカー出力: 48kHz
-    "input_channels": 1,           # マイク入力: モノラル
-    "output_channels": 2,          # スピーカー出力: ステレオ（USBスピーカー要件）
+    "channels": 1,                 # モノラル（raspi-voice3と同じ）
     "chunk_size": 1024,
 
-    # デバイス設定
+    # デバイス設定（PyAudioで自動検出）
     "input_device_index": None,
     "output_device_index": None,
-    "alsa_output_device": "hw:2,0",  # UACDemoV1.0 USB スピーカー
-    "alsa_input_device": "hw:3,0",   # USB PnP Sound Device マイク
 
     # GPIO設定
     "button_pin": 5,
@@ -154,8 +151,8 @@ CONFIG = {
 ユーザーが「ライフログ停止」「ライフログを止めて」と言ったらlifelog_stopを使用。
 ユーザーが「今日何枚撮った？」「ライフログの状態」と言ったらlifelog_statusを使用。
 
-重要: voice_sendは必ずツールとして呼び出してください。呼び出さずに「ボタンを押してください」と言っても録音モードは開始されません。
-voice_sendツールを呼び出した後、ユーザーが録音するまで「送信しました」とは言わないでください。
+ツールはユーザーが明示的に依頼した場合のみ使用してください。
+挨拶や質問には普通に会話で応答してください。
 """,
 }
 
@@ -274,15 +271,28 @@ def find_audio_device(p, device_type="input"):
 
 
 def resample_audio(audio_data, from_rate, to_rate):
-    """オーディオをリサンプリング"""
+    """オーディオをリサンプリング（整数倍ダウンサンプリング対応）"""
     if from_rate == to_rate:
         return audio_data
 
-    audio_array = np.frombuffer(audio_data, dtype=np.int16)
-    original_length = len(audio_array)
-    target_length = int(original_length * to_rate / from_rate)
-    indices = np.linspace(0, original_length - 1, target_length)
-    resampled = np.interp(indices, np.arange(original_length), audio_array)
+    audio_array = np.frombuffer(audio_data, dtype=np.int16).astype(np.float32)
+
+    # 整数倍ダウンサンプリングの場合は平均化（簡易ローパスフィルタ効果）
+    ratio = from_rate / to_rate
+    if ratio == int(ratio) and ratio > 1:
+        # 例: 48kHz → 16kHz (3倍) の場合、3サンプルの平均を取る
+        factor = int(ratio)
+        # 端数を切り捨てて整数個のグループにする
+        trim_length = (len(audio_array) // factor) * factor
+        trimmed = audio_array[:trim_length]
+        # グループごとに平均を計算
+        resampled = trimmed.reshape(-1, factor).mean(axis=1)
+    else:
+        # 非整数倍の場合は線形補間
+        original_length = len(audio_array)
+        target_length = int(original_length * to_rate / from_rate)
+        indices = np.linspace(0, original_length - 1, target_length)
+        resampled = np.interp(indices, np.arange(original_length), audio_array)
 
     return resampled.astype(np.int16).tobytes()
 
@@ -834,7 +844,7 @@ def record_voice_message_sync():
     try:
         stream = audio.open(
             format=pyaudio.paInt16,
-            channels=CONFIG["input_channels"],
+            channels=CONFIG["channels"],
             rate=CONFIG["input_sample_rate"],  # 44100Hz
             input=True,
             input_device_index=input_device,
@@ -894,7 +904,7 @@ def record_voice_message_sync():
     # WAV形式に変換
     wav_buffer = io.BytesIO()
     with wave.open(wav_buffer, 'wb') as wf:
-        wf.setnchannels(CONFIG["input_channels"])
+        wf.setnchannels(CONFIG["channels"])
         wf.setsampwidth(2)  # 16bit
         wf.setframerate(CONFIG["input_sample_rate"])  # 44100Hz
         wf.writeframes(b''.join(frames))
@@ -1146,7 +1156,7 @@ def camera_capture_func(prompt="この画像に何が写っていますか？簡
         response = gemini_client.models.generate_content(
             model="gemini-2.0-flash",
             contents=[
-                types.Part.from_text(prompt + "\n\n日本語で回答してください。音声で読み上げるため、1-2文程度の簡潔な説明をお願いします。"),
+                types.Part.from_text(text=prompt + "\n\n日本語で回答してください。音声で読み上げるため、1-2文程度の簡潔な説明をお願いします。"),
                 types.Part.from_bytes(data=image_data, mime_type="image/jpeg")
             ]
         )
@@ -1562,35 +1572,59 @@ def get_gemini_tools():
         "parameters": {"type": "object", "properties": {}}
     }
 
-    return [
-        {"function_declarations": [
-            gmail_list_tool,
-            gmail_read_tool,
-            gmail_send_tool,
-            gmail_reply_tool,
-            alarm_set_tool,
-            alarm_list_tool,
-            alarm_delete_tool,
-            camera_capture_tool,
-            gmail_send_photo_tool,
-            voice_send_tool,
-            voice_send_photo_tool,
-            lifelog_start_tool,
-            lifelog_stop_tool,
-            lifelog_status_tool
-        ]}
+    # 辞書形式からtypes.FunctionDeclarationに変換
+    def to_function_declaration(tool_dict):
+        params = tool_dict.get("parameters", {})
+        properties = params.get("properties", {})
+        required = params.get("required", [])
+
+        schema_props = {}
+        for name, prop in properties.items():
+            prop_type = prop.get("type", "string").upper()
+            schema_props[name] = types.Schema(
+                type=prop_type,
+                description=prop.get("description", "")
+            )
+
+        return types.FunctionDeclaration(
+            name=tool_dict["name"],
+            description=tool_dict["description"],
+            parameters=types.Schema(
+                type="OBJECT",
+                properties=schema_props,
+                required=required if required else None
+            )
+        )
+
+    function_declarations = [
+        to_function_declaration(gmail_list_tool),
+        to_function_declaration(gmail_read_tool),
+        to_function_declaration(gmail_send_tool),
+        to_function_declaration(gmail_reply_tool),
+        to_function_declaration(alarm_set_tool),
+        to_function_declaration(alarm_list_tool),
+        to_function_declaration(alarm_delete_tool),
+        to_function_declaration(camera_capture_tool),
+        to_function_declaration(gmail_send_photo_tool),
+        to_function_declaration(voice_send_tool),
+        to_function_declaration(voice_send_photo_tool),
+        to_function_declaration(lifelog_start_tool),
+        to_function_declaration(lifelog_stop_tool),
+        to_function_declaration(lifelog_status_tool),
     ]
+
+    return [types.Tool(function_declarations=function_declarations)]
 
 
 # ==================== オーディオハンドラ ====================
 
 class GeminiAudioHandler:
-    """Gemini Live API用音声処理ハンドラ (alsaaudio使用)"""
+    """Gemini Live API用音声処理ハンドラ (PyAudio使用 - raspi-voice3と同じ方式)"""
 
     def __init__(self):
-        self.audio = pyaudio.PyAudio()  # マイク入力用
+        self.audio = pyaudio.PyAudio()
         self.input_stream = None
-        self.alsa_output = None  # ALSA出力用
+        self.output_stream = None
         self.is_recording = False
         self.is_playing = False
 
@@ -1606,7 +1640,7 @@ class GeminiAudioHandler:
         try:
             self.input_stream = self.audio.open(
                 format=pyaudio.paInt16,
-                channels=CONFIG["input_channels"],
+                channels=CONFIG["channels"],
                 rate=CONFIG["input_sample_rate"],
                 input=True,
                 input_device_index=input_device,
@@ -1628,9 +1662,7 @@ class GeminiAudioHandler:
             print("マイク入力停止")
 
     def read_audio_chunk(self):
-        """
-        音声チャンクを読み取り、Gemini Live API用に16kHzにリサンプリング
-        """
+        """音声チャンクを読み取り、Gemini Live API用に16kHzにリサンプリング"""
         if self.input_stream and self.is_recording:
             try:
                 data = self.input_stream.read(CONFIG["chunk_size"], exception_on_overflow=False)
@@ -1642,53 +1674,46 @@ class GeminiAudioHandler:
         return None
 
     def start_output_stream(self):
-        """ALSAを使用してスピーカー出力を開始"""
-        if not ALSA_AVAILABLE:
-            print("警告: alsaaudioが利用できません")
-            return
+        """PyAudioを使用してスピーカー出力を開始（raspi-voice3と同じ）"""
+        output_device = CONFIG["output_device_index"]
+        if output_device is None:
+            output_device = find_audio_device(self.audio, "output")
 
         try:
-            alsa_device = CONFIG["alsa_output_device"]
-            self.alsa_output = alsaaudio.PCM(
-                type=alsaaudio.PCM_PLAYBACK,
-                mode=alsaaudio.PCM_NORMAL,
-                device=alsa_device,
-                channels=CONFIG["output_channels"],
+            self.output_stream = self.audio.open(
+                format=pyaudio.paInt16,
+                channels=CONFIG["channels"],
                 rate=CONFIG["output_sample_rate"],
-                format=alsaaudio.PCM_FORMAT_S16_LE,
-                periodsize=CONFIG["chunk_size"] * 2
+                output=True,
+                output_device_index=output_device,
+                frames_per_buffer=CONFIG["chunk_size"] * 2
             )
             self.is_playing = True
-            print(f"スピーカー出力開始 (ALSA: {alsa_device})")
+            print("スピーカー出力開始")
         except Exception as e:
-            print(f"ALSA出力エラー: {e}")
-            self.alsa_output = None
+            print(f"スピーカー出力エラー: {e}")
+            self.output_stream = None
             self.is_playing = False
 
     def stop_output_stream(self):
-        if self.alsa_output:
+        if self.output_stream:
             self.is_playing = False
-            self.alsa_output.close()
-            self.alsa_output = None
+            self.output_stream.stop_stream()
+            self.output_stream.close()
+            self.output_stream = None
             print("スピーカー出力停止")
 
     def play_audio_chunk(self, audio_data):
-        """Gemini出力（24kHz モノラル）を48kHz ステレオにリサンプリングして再生"""
-        if self.alsa_output and self.is_playing:
+        """Gemini出力（24kHz）を48kHzにリサンプリングして再生"""
+        if self.output_stream and self.is_playing:
             try:
                 resampled = resample_audio(audio_data, CONFIG["receive_sample_rate"], CONFIG["output_sample_rate"])
-                # ステレオ出力の場合はモノラルをステレオに変換
-                if CONFIG["output_channels"] == 2:
-                    resampled = mono_to_stereo(resampled)
-                self.alsa_output.write(resampled)
+                self.output_stream.write(resampled)
             except Exception as e:
                 print(f"音声再生エラー: {e}")
 
     def play_audio_buffer(self, audio_data):
-        """
-        完全な音声バッファを再生（WAVデータ）
-        ALSAを使用
-        """
+        """完全な音声バッファを再生（WAVデータ）- raspi-voice3と同じ方式"""
         if audio_data is None:
             print("音声データがありません")
             return
@@ -1699,7 +1724,6 @@ class GeminiAudioHandler:
             wav_buffer = io.BytesIO(audio_data)
             with wave.open(wav_buffer, 'rb') as wf:
                 original_rate = wf.getframerate()
-                original_channels = wf.getnchannels()
                 frames = wf.readframes(wf.getnframes())
 
                 # 必要に応じてリサンプリング
@@ -1711,15 +1735,11 @@ class GeminiAudioHandler:
                     resampled = audio_np[indices]
                     frames = resampled.astype(np.int16).tobytes()
 
-                # ステレオ出力の場合、モノラルをステレオに変換
-                if CONFIG["output_channels"] == 2 and original_channels == 1:
-                    frames = mono_to_stereo(frames)
-
-                # ALSAを使用して再生
-                if self.alsa_output and self.is_playing:
+                # 既存の出力ストリームに書き込み
+                if self.output_stream and self.is_playing:
                     chunk_size = 4096
                     for i in range(0, len(frames), chunk_size):
-                        self.alsa_output.write(frames[i:i+chunk_size])
+                        self.output_stream.write(frames[i:i+chunk_size])
                 else:
                     print("出力ストリームが利用不可")
 
@@ -1779,6 +1799,8 @@ class GeminiLiveClient:
                     "disabled": True
                 }
             },
+            # 入力音声の文字起こしを有効化（デバッグ用）
+            "input_audio_transcription": {},
             "tools": get_gemini_tools(),
         }
 
@@ -1832,8 +1854,12 @@ class GeminiLiveClient:
             return
 
         try:
+            # デバッグ: 最初のチャンクだけサイズを表示
+            if not hasattr(self, '_audio_debug_shown'):
+                self._audio_debug_shown = True
+                print(f"\n[DEBUG] Audio chunk size: {len(audio_data)} bytes")
+
             # Gemini Live APIは {"data": bytes, "mime_type": str} 形式を期待
-            # サンプルレートを明示的に指定
             await self.session.send_realtime_input(
                 audio={"data": audio_data, "mime_type": "audio/pcm;rate=16000"}
             )
@@ -1928,6 +1954,18 @@ class GeminiLiveClient:
                 if text:
                     print(f"[AI transcript] {text}")
 
+            # 入力トランスクリプト（ユーザーの音声認識結果）
+            if hasattr(server_content, 'input_transcription') and server_content.input_transcription:
+                text = server_content.input_transcription.text
+                if text:
+                    print(f"[USER] {text}")
+
+        # デバッグ: tool_callの有無を毎回確認
+        if hasattr(response, 'tool_call'):
+            tc = response.tool_call
+            if tc:
+                print(f"[DEBUG] tool_call found: {tc}")
+
         # ツール呼び出し
         if hasattr(response, 'tool_call') and response.tool_call:
             function_responses = []
@@ -2021,11 +2059,11 @@ async def audio_input_loop(client: GeminiLiveClient, audio_handler: GeminiAudioH
                         loop = asyncio.get_event_loop()
                         success = await loop.run_in_executor(None, send_recorded_voice_message)
                         is_recording = False
-                        # 結果を音声で通知
+                        # 結果をログに出力（Geminiに送ると再度ツール呼び出しされるため）
                         if success:
-                            await client.send_text_message("メッセージをスマホに送信しました。")
+                            print("メッセージ送信完了")
                         else:
-                            await client.send_text_message("送信に失敗しました。")
+                            print("メッセージ送信失敗")
                         continue
                     else:
                         print("ボタン押下検出 - 録音開始")
