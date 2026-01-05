@@ -1,0 +1,21 @@
+# Gemini Live API
+google-genai>=0.4.0
+
+# Audio handling
+pyaudio
+numpy
+
+# Environment variables
+python-dotenv
+
+# Gmail API
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+
+# GPIO (Raspberry Pi)
+gpiozero
+lgpio
+
+# Firebase
+requests

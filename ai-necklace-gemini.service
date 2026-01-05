@@ -1,0 +1,31 @@
+[Unit]
+Description=AI Necklace Gemini Live Voice Assistant (Auto-Reconnect)
+After=network-online.target sound.target
+Requires=network-online.target
+
+[Service]
+Type=simple
+User=hotaka
+WorkingDirectory=/home/hotaka/raspi-voice4
+Environment=PATH=/home/hotaka/raspi-voice4/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+EnvironmentFile=/home/hotaka/.ai-necklace/.env
+ExecStart=/home/hotaka/raspi-voice4/venv/bin/python3 ai_necklace_gemini.py
+
+# Auto-restart configuration
+Restart=always
+RestartSec=10
+StartLimitIntervalSec=600
+StartLimitBurst=20
+
+# Graceful shutdown
+TimeoutStopSec=15
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+
+# Audio + GPIO access
+SupplementaryGroups=audio gpio
+
+[Install]
+WantedBy=multi-user.target

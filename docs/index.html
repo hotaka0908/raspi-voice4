@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Voice Messenger</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            height: 100%;
+            overflow: hidden;
+            color: #333;
+            position: fixed;
+            width: 100%;
+        }
+
+        /* ヘッダー */
+        .header {
+            background: #4ade80;
+            color: white;
+            padding: 15px 20px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header h1 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .header .back-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        .header .back-btn.visible {
+            display: block;
+        }
+
+        .header .chat-partner {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .header .chat-partner.visible {
+            display: flex;
+        }
+
+        .header .chat-partner .avatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .header .chat-partner .name {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        /* メインコンテナ */
+        .container {
+            padding-top: 60px;
+            height: 100%;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: none;
+        }
+
+        /* トークリスト画面 */
+        .talk-list-view {
+            display: block;
+            padding-bottom: 20px;
+        }
+
+        .talk-list-view.hidden {
+            display: none;
+        }
+
+        .talk-item {
+            background: white;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .talk-item:active {
+            background: #f0f0f0;
+        }
+
+        .talk-item .avatar {
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #4ade80, #22c55e);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            flex-shrink: 0;
+        }
+
+        .talk-item .info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .talk-item .top-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .talk-item .name {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .talk-item .time {
+            font-size: 0.75rem;
+            color: #999;
+            flex-shrink: 0;
+        }
+
+        .talk-item .preview {
+            font-size: 0.9rem;
+            color: #666;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .talk-item .badge {
+            background: #4ade80;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 10px;
+            margin-left: 10px;
+            flex-shrink: 0;
+        }
+
+        .empty-talks {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        /* チャット画面 */
+        .chat-view {
+            display: none;
+            flex-direction: column;
+            position: fixed;
+            top: 60px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+        }
+
+        .chat-view.visible {
+            display: flex;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            padding-bottom: 15px;
+            background: #e5ddd5;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d4ccc4' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            display: flex;
+            flex-direction: column;
+            overscroll-behavior: none;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .chat-date-divider {
+            text-align: center;
+            margin: 15px 0;
+        }
+
+        .chat-date-divider span {
+            background: rgba(0,0,0,0.2);
+            color: white;
+            font-size: 0.75rem;
+            padding: 5px 12px;
+            border-radius: 8px;
+        }
+
+        .message-bubble {
+            max-width: 85%;
+            margin-bottom: 15px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .message-bubble.received {
+            align-self: flex-start;
+            flex-direction: row;
+        }
+
+        .message-bubble.sent {
+            align-self: flex-end;
+            flex-direction: row;
+            justify-content: flex-end;
+        }
+
+        .message-bubble.sent .content {
+            align-items: flex-end;
+        }
+
+        .message-bubble .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+            align-self: flex-end;
+        }
+
+        .message-bubble.received .avatar {
+            background: linear-gradient(145deg, #4ade80, #22c55e);
+        }
+
+        .message-bubble .content {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message-bubble .sender-name {
+            font-size: 0.75rem;
+            color: #666;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+
+        .message-bubble .bubble {
+            padding: 10px 14px;
+            border-radius: 18px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.2s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .message-bubble.received .bubble {
+            background: white;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-bubble.sent .bubble {
+            background: #dcf8c6;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message-bubble .bubble:active {
+            opacity: 0.8;
+        }
+
+        .message-bubble .text {
+            font-size: 0.95rem;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .message-bubble .bubble.playing {
+            background: rgba(74, 222, 128, 0.2) !important;
+        }
+
+        .message-bubble .meta {
+            font-size: 0.7rem;
+            color: #999;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .message-bubble.sent .meta {
+            justify-content: flex-end;
+        }
+
+        .message-bubble .played-icon {
+            color: #4ade80;
+        }
+
+        /* 写真メッセージ */
+        .message-bubble .photo-bubble {
+            padding: 4px;
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .message-bubble .photo-bubble img {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 8px;
+            display: block;
+        }
+
+        .message-bubble.received .photo-bubble {
+            background: white;
+        }
+
+        .message-bubble.sent .photo-bubble {
+            background: #dcf8c6;
+        }
+
+        /* フルスクリーン画像表示 */
+        .photo-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 300;
+        }
+
+        .photo-modal.active {
+            display: flex;
+        }
+
+        .photo-modal img {
+            max-width: 95%;
+            max-height: 95%;
+            object-fit: contain;
+        }
+
+        .photo-modal .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 2rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        /* 録音バー */
+        .record-bar {
+            background: white;
+            padding: 10px 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-top: 1px solid #ddd;
+            flex-shrink: 0;
+        }
+
+        .record-bar .record-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .record-bar .record-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 3px solid #333;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .record-bar .record-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 28px;
+            height: 28px;
+            background: #ef4444;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+
+        .record-bar .record-btn:active::before,
+        .record-bar .record-btn.recording::before {
+            border-radius: 4px;
+            width: 20px;
+            height: 20px;
+        }
+
+        .record-bar .record-btn.recording {
+            animation: pulse-record 1s infinite;
+        }
+
+        @keyframes pulse-record {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            50% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+        }
+
+        .record-bar .record-hint {
+            position: absolute;
+            left: 60px;
+            white-space: nowrap;
+            font-size: 0.85rem;
+            color: #999;
+        }
+
+
+        /* オーバーレイ */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 200;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+
+        .overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255,255,255,0.2);
+            border-top-color: #4ade80;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .overlay p {
+            color: white;
+            font-size: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- ヘッダー -->
+    <div class="header">
+        <button class="back-btn" id="backBtn">←</button>
+        <h1 id="headerTitle">トーク</h1>
+        <div class="chat-partner" id="chatPartner">
+            <span class="name">ラズパイ</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- トークリスト画面 -->
+        <div class="talk-list-view" id="talkListView">
+            <div id="talkList">
+                <div class="empty-talks">メッセージがありません</div>
+            </div>
+        </div>
+
+        <!-- チャット画面 -->
+        <div class="chat-view" id="chatView">
+            <div class="chat-messages" id="chatMessages">
+                <!-- メッセージがここに表示される -->
+            </div>
+            <div class="record-bar">
+                <div class="record-wrapper">
+                    <button class="record-btn" id="chatRecordBtn"></button>
+                    <span class="record-hint">押しながら話す</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- オーバーレイ -->
+    <div class="overlay" id="overlay">
+        <div class="spinner"></div>
+        <p id="overlayText">送信中...</p>
+    </div>
+
+    <!-- 写真モーダル -->
+    <div class="photo-modal" id="photoModal">
+        <button class="close-btn" id="closePhotoModal">×</button>
+        <img id="photoModalImg" src="" alt="写真">
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, push, onValue, update, query, orderByChild, limitToLast } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
+        import firebaseConfig from './firebase-config.js';
+
+        // 初期化
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const storage = getStorage(app);
+
+        const DEVICE_ID = 'phone';
+
+        // DOM要素
+        const backBtn = document.getElementById('backBtn');
+        const headerTitle = document.getElementById('headerTitle');
+        const chatPartner = document.getElementById('chatPartner');
+        const talkListView = document.getElementById('talkListView');
+        const talkList = document.getElementById('talkList');
+        const chatView = document.getElementById('chatView');
+        const chatMessages = document.getElementById('chatMessages');
+        const chatRecordBtn = document.getElementById('chatRecordBtn');
+        const overlay = document.getElementById('overlay');
+        const overlayText = document.getElementById('overlayText');
+        const photoModal = document.getElementById('photoModal');
+        const photoModalImg = document.getElementById('photoModalImg');
+        const closePhotoModal = document.getElementById('closePhotoModal');
+
+        // 状態
+        let allMessages = [];
+        let currentView = 'list'; // 'list' or 'chat'
+        let currentChatPartner = null;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+        let currentAudio = null;
+        let knownMessageIds = new Set();
+        let isFirstLoad = true;
+
+        // 通知音
+        function playNotificationSound() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                oscillator.frequency.value = 880;
+                oscillator.type = 'sine';
+
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+
+                setTimeout(() => {
+                    const osc2 = audioContext.createOscillator();
+                    const gain2 = audioContext.createGain();
+                    osc2.connect(gain2);
+                    gain2.connect(audioContext.destination);
+                    osc2.frequency.value = 1320;
+                    osc2.type = 'sine';
+                    gain2.gain.setValueAtTime(0.2, audioContext.currentTime);
+                    gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                    osc2.start(audioContext.currentTime);
+                    osc2.stop(audioContext.currentTime + 0.3);
+                }, 150);
+            } catch (e) {
+                console.log('通知音の再生に失敗:', e);
+            }
+        }
+
+        // 画面切り替え
+        function showListView() {
+            currentView = 'list';
+            talkListView.classList.remove('hidden');
+            chatView.classList.remove('visible');
+            backBtn.classList.remove('visible');
+            headerTitle.style.display = 'block';
+            chatPartner.classList.remove('visible');
+        }
+
+        function showChatView(partnerId, partnerName) {
+            currentView = 'chat';
+            currentChatPartner = partnerId;
+            talkListView.classList.add('hidden');
+            chatView.classList.add('visible');
+            backBtn.classList.add('visible');
+            headerTitle.style.display = 'none';
+            chatPartner.classList.add('visible');
+            chatPartner.querySelector('.name').textContent = partnerName;
+            renderChatMessages();
+
+            // 確実に最下部にスクロール（遅延実行）
+            setTimeout(() => {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 100);
+
+            // 未読メッセージを既読にする
+            markMessagesAsRead(partnerId);
+        }
+
+        // トークリストをレンダリング
+        function renderTalkList() {
+            // 相手ごとにグループ化
+            const partners = {};
+            allMessages.forEach(msg => {
+                const partner = msg.from === DEVICE_ID ? 'raspi' : msg.from;
+                if (!partners[partner]) {
+                    partners[partner] = {
+                        id: partner,
+                        name: partner === 'raspi' ? 'ラズパイ' : partner,
+                        messages: [],
+                        unreadCount: 0,
+                        lastMessage: null,
+                        lastTime: 0
+                    };
+                }
+                partners[partner].messages.push(msg);
+                if (msg.from !== DEVICE_ID && !msg.played) {
+                    partners[partner].unreadCount++;
+                }
+                if (msg.timestamp > partners[partner].lastTime) {
+                    partners[partner].lastTime = msg.timestamp;
+                    partners[partner].lastMessage = msg;
+                }
+            });
+
+            const partnerList = Object.values(partners).sort((a, b) => b.lastTime - a.lastTime);
+
+            if (partnerList.length === 0) {
+                talkList.innerHTML = '<div class="empty-talks">メッセージがありません</div>';
+                return;
+            }
+
+            talkList.innerHTML = partnerList.map(partner => {
+                const lastMsg = partner.lastMessage;
+                const isPhoto = lastMsg?.type === 'photo' || lastMsg?.photo_url;
+                const preview = lastMsg?.text || (isPhoto ? '📷 写真' : '🎤 音声メッセージ');
+                const time = formatTimeShort(partner.lastTime);
+                const badge = partner.unreadCount > 0 ? `<span class="badge">${partner.unreadCount}</span>` : '';
+
+                return `
+                    <div class="talk-item" data-partner-id="${partner.id}" data-partner-name="${partner.name}">
+                        <div class="avatar">🤖</div>
+                        <div class="info">
+                            <div class="top-row">
+                                <span class="name">${partner.name}</span>
+                                <span class="time">${time}</span>
+                            </div>
+                            <div class="preview">${preview}</div>
+                        </div>
+                        ${badge}
+                    </div>
+                `;
+            }).join('');
+
+            // クリックイベント
+            document.querySelectorAll('.talk-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const partnerId = item.dataset.partnerId;
+                    const partnerName = item.dataset.partnerName;
+                    showChatView(partnerId, partnerName);
+                });
+            });
+        }
+
+        // チャットメッセージをレンダリング
+        function renderChatMessages() {
+            if (!currentChatPartner) return;
+
+            // 現在のパートナーとのメッセージをフィルタ
+            const messages = allMessages.filter(msg => {
+                return msg.from === currentChatPartner ||
+                       (msg.from === DEVICE_ID && currentChatPartner === 'raspi');
+            }).sort((a, b) => a.timestamp - b.timestamp);
+
+            if (messages.length === 0) {
+                chatMessages.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">メッセージがありません</div>';
+                return;
+            }
+
+            let html = '';
+            let lastDate = null;
+
+            messages.forEach(msg => {
+                const date = new Date(msg.timestamp).toDateString();
+                if (date !== lastDate) {
+                    html += `
+                        <div class="chat-date-divider">
+                            <span>${formatDateHeader(msg.timestamp)}</span>
+                        </div>
+                    `;
+                    lastDate = date;
+                }
+
+                const isSent = msg.from === DEVICE_ID;
+                const isPhoto = msg.type === 'photo' || msg.photo_url;
+                const hasText = msg.text && msg.text.trim();
+                const time = formatTimeShort(msg.timestamp);
+                const playedIcon = isSent && msg.played ? '<span class="played-icon">✓✓</span>' : '';
+                const senderName = msg.from === 'raspi' ? 'ラズパイ' : msg.from;
+
+                let bubbleContent;
+                if (isPhoto) {
+                    // 写真メッセージ
+                    const photoUrl = msg.photo_url;
+                    bubbleContent = `
+                        <div class="photo-bubble" data-photo-url="${photoUrl}" data-id="${msg.id}">
+                            <img src="${photoUrl}" alt="写真" loading="lazy">
+                        </div>
+                        ${hasText ? `<div class="bubble"><div class="text">${msg.text}</div></div>` : ''}
+                    `;
+                } else {
+                    // 音声メッセージ
+                    const displayText = hasText ? msg.text : '🎤 音声メッセージ';
+                    bubbleContent = `
+                        <div class="bubble" data-url="${msg.audio_url}" data-id="${msg.id}">
+                            <div class="text">${displayText}</div>
+                        </div>
+                    `;
+                }
+
+                html += `
+                    <div class="message-bubble ${isSent ? 'sent' : 'received'}">
+                        ${!isSent ? '<div class="avatar">🤖</div>' : ''}
+                        <div class="content">
+                            ${!isSent ? `<div class="sender-name">${senderName}</div>` : ''}
+                            ${bubbleContent}
+                            <div class="meta">
+                                <span>${time}</span>
+                                ${playedIcon}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            chatMessages.innerHTML = html;
+
+            // バブルクリックで音声再生
+            document.querySelectorAll('.message-bubble .bubble[data-url]').forEach(bubble => {
+                bubble.addEventListener('click', () => playAudioFromBubble(bubble));
+            });
+
+            // 写真クリックでモーダル表示
+            document.querySelectorAll('.message-bubble .photo-bubble').forEach(photoBubble => {
+                photoBubble.addEventListener('click', () => openPhotoModal(photoBubble));
+            });
+
+            // スクロールを一番下へ（複数回実行で確実に）
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            requestAnimationFrame(() => {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            });
+            setTimeout(() => {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 50);
+        }
+
+        // 写真モーダルを開く
+        function openPhotoModal(photoBubble) {
+            const url = photoBubble.dataset.photoUrl;
+            const id = photoBubble.dataset.id;
+
+            photoModalImg.src = url;
+            photoModal.classList.add('active');
+
+            // 再生済みにマーク
+            const msgRef = ref(db, `messages/${id}`);
+            update(msgRef, { played: true });
+        }
+
+        // 写真モーダルを閉じる
+        function closePhotoModalHandler() {
+            photoModal.classList.remove('active');
+            photoModalImg.src = '';
+        }
+
+        // 音声再生
+        function playAudioFromBubble(bubble) {
+            const url = bubble.dataset.url;
+            const id = bubble.dataset.id;
+
+            // 既に再生中なら停止
+            if (currentAudio) {
+                currentAudio.pause();
+                document.querySelectorAll('.bubble.playing').forEach(b => {
+                    b.classList.remove('playing');
+                });
+            }
+
+            if (bubble.classList.contains('playing')) {
+                currentAudio = null;
+                return;
+            }
+
+            bubble.classList.add('playing');
+
+            currentAudio = new Audio(url);
+            currentAudio.play();
+
+            currentAudio.onended = () => {
+                bubble.classList.remove('playing');
+                currentAudio = null;
+            };
+
+            // 再生済みにマーク
+            const msgRef = ref(db, `messages/${id}`);
+            update(msgRef, { played: true });
+        }
+
+        // メッセージを既読にマーク
+        function markMessagesAsRead(partnerId) {
+            allMessages.forEach(msg => {
+                if (msg.from === partnerId && !msg.played) {
+                    const msgRef = ref(db, `messages/${msg.id}`);
+                    update(msgRef, { played: true });
+                }
+            });
+        }
+
+        // 音声認識（Web Speech API）
+        let recognition = null;
+        let recognizedText = '';
+
+        function initSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                console.log('Web Speech API非対応');
+                return null;
+            }
+
+            const recog = new SpeechRecognition();
+            recog.lang = 'ja-JP';
+            recog.continuous = true;
+            recog.interimResults = true;
+
+            recog.onresult = (event) => {
+                let finalText = '';
+                let interimText = '';
+
+                for (let i = 0; i < event.results.length; i++) {
+                    const result = event.results[i];
+                    if (result.isFinal) {
+                        finalText += result[0].transcript;
+                    } else {
+                        interimText += result[0].transcript;
+                    }
+                }
+
+                recognizedText = finalText || interimText;
+                console.log('認識中:', recognizedText);
+            };
+
+            recog.onerror = (event) => {
+                console.log('音声認識エラー:', event.error);
+            };
+
+            return recog;
+        }
+
+        // 録音機能
+        async function startRecording(btn) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                audioChunks = [];
+                recognizedText = '';
+
+                // 音声認識を開始
+                recognition = initSpeechRecognition();
+                if (recognition) {
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        console.log('音声認識開始エラー:', e);
+                    }
+                }
+
+                mediaRecorder.ondataavailable = (e) => {
+                    audioChunks.push(e.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    stream.getTracks().forEach(track => track.stop());
+
+                    // 音声認識を停止
+                    if (recognition) {
+                        try {
+                            recognition.stop();
+                        } catch (e) {
+                            console.log('音声認識停止エラー:', e);
+                        }
+                    }
+
+                    // 少し待ってから送信（認識結果が確定するのを待つ）
+                    setTimeout(async () => {
+                        await sendVoiceMessage(audioBlob, recognizedText);
+                    }, 300);
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                btn.classList.add('recording');
+            } catch (err) {
+                console.error('録音エラー:', err);
+                alert('マイクへのアクセスを許可してください');
+            }
+        }
+
+        function stopRecording(btn) {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                btn.classList.remove('recording');
+            }
+        }
+
+        // 音声送信
+        async function sendVoiceMessage(audioBlob, text = '') {
+            showOverlay('送信中...');
+
+            try {
+                const timestamp = Date.now();
+                const filename = `${DEVICE_ID}_${timestamp}.webm`;
+
+                const audioRef = storageRef(storage, `audio/${filename}`);
+                await uploadBytes(audioRef, audioBlob);
+                const audioUrl = await getDownloadURL(audioRef);
+
+                const messageData = {
+                    from: DEVICE_ID,
+                    audio_url: audioUrl,
+                    filename: filename,
+                    timestamp: timestamp,
+                    played: false
+                };
+
+                // テキストがあれば追加
+                if (text && text.trim()) {
+                    messageData.text = text.trim();
+                }
+
+                const messagesRef = ref(db, 'messages');
+                await push(messagesRef, messageData);
+
+                hideOverlay();
+            } catch (err) {
+                console.error('送信エラー:', err);
+                hideOverlay();
+                alert('送信に失敗しました');
+            }
+        }
+
+        // メッセージ監視
+        function listenForMessages() {
+            const messagesRef = query(
+                ref(db, 'messages'),
+                orderByChild('timestamp'),
+                limitToLast(50)
+            );
+
+            onValue(messagesRef, (snapshot) => {
+                const data = snapshot.val();
+                if (!data) {
+                    allMessages = [];
+                    renderTalkList();
+                    if (currentView === 'chat') renderChatMessages();
+                    isFirstLoad = false;
+                    return;
+                }
+
+                const messages = Object.entries(data)
+                    .map(([id, msg]) => ({ id, ...msg }))
+                    .sort((a, b) => b.timestamp - a.timestamp);
+
+                // 新着チェック（通知音）
+                let hasNewMessage = false;
+                messages.forEach(msg => {
+                    if (!knownMessageIds.has(msg.id)) {
+                        knownMessageIds.add(msg.id);
+                        if (!isFirstLoad && msg.from !== DEVICE_ID && !msg.played) {
+                            hasNewMessage = true;
+                        }
+                    }
+                });
+
+                if (hasNewMessage) {
+                    playNotificationSound();
+                }
+
+                isFirstLoad = false;
+                allMessages = messages;
+
+                if (currentView === 'list') {
+                    renderTalkList();
+                } else {
+                    renderChatMessages();
+                    renderTalkList(); // バッジ更新用
+                }
+            });
+        }
+
+        // 時間フォーマット
+        function formatTimeShort(timestamp) {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const isToday = date.toDateString() === now.toDateString();
+
+            if (isToday) {
+                return date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+            } else {
+                return date.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' });
+            }
+        }
+
+        function formatDateHeader(timestamp) {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const isToday = date.toDateString() === now.toDateString();
+            const isYesterday = new Date(now - 86400000).toDateString() === date.toDateString();
+
+            if (isToday) return '今日';
+            if (isYesterday) return '昨日';
+            return date.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
+        }
+
+        // オーバーレイ
+        function showOverlay(text) {
+            overlayText.textContent = text;
+            overlay.classList.add('active');
+        }
+
+        function hideOverlay() {
+            overlay.classList.remove('active');
+        }
+
+        // イベントリスナー
+        backBtn.addEventListener('click', showListView);
+
+        // 写真モーダルを閉じる
+        closePhotoModal.addEventListener('click', closePhotoModalHandler);
+        photoModal.addEventListener('click', (e) => {
+            if (e.target === photoModal) closePhotoModalHandler();
+        });
+
+        // チャット画面の録音ボタン
+        chatRecordBtn.addEventListener('mousedown', () => startRecording(chatRecordBtn));
+        chatRecordBtn.addEventListener('mouseup', () => stopRecording(chatRecordBtn));
+        chatRecordBtn.addEventListener('mouseleave', () => stopRecording(chatRecordBtn));
+        chatRecordBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startRecording(chatRecordBtn);
+        });
+        chatRecordBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            stopRecording(chatRecordBtn);
+        });
+
+        // 初期化
+        listenForMessages();
+    </script>
+</body>
+</html>
