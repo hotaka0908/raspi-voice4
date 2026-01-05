@@ -1,10 +1,18 @@
 # AI Necklace Gemini Live
 
-Raspberry Pi 5 + Google Gemini Live API を使用したリアルタイム音声AIアシスタント
+Raspberry Pi 5 + Google Gemini Live API + Cloud Functions を使用したリアルタイム音声AIアシスタント
 
 ## 概要
 
 Google Gemini Live APIを使用した低レイテンシのリアルタイム双方向音声対話システムです。raspi-voice3 (OpenAI Realtime API版) をベースに、Gemini Live APIに移行しました。
+
+## Google Cloud 利用サービス
+
+| カテゴリ | サービス | 用途 |
+|---------|---------|------|
+| **コンピューティング** | Cloud Functions | ライフログ写真のAI自動分析 |
+| **AI/ML** | Gemini API (Live) | リアルタイム音声対話 |
+| **AI/ML** | Gemini API (Vision) | 画像認識・分析 |
 
 ## 主な機能
 
@@ -14,7 +22,7 @@ Google Gemini Live APIを使用した低レイテンシのリアルタイム双�
 - **カメラ機能** - Gemini Visionで画像認識
 - **写真付きメール送信**
 - **音声メッセージ** - Firebase経由でスマホとやり取り
-- **ライフログ** - 定期的な自動撮影
+- **ライフログ** - 定期的な自動撮影 + Cloud FunctionsでAI自動分析
 
 ## 必要要件
 
@@ -170,16 +178,70 @@ sudo journalctl -u ai-necklace-gemini -f
 
 ```
 raspi-voice4/
-├── ai_necklace_gemini.py    # メインアプリケーション
-├── firebase_voice.py        # Firebase連携モジュール
-├── requirements.txt         # 依存関係
+├── ai_necklace_gemini.py       # メインアプリケーション
+├── firebase_voice.py           # Firebase連携モジュール
+├── requirements.txt            # Python依存関係
 ├── ai-necklace-gemini.service  # systemdサービス
-├── README.md               # このファイル
-└── docs/                   # スマホ用PWA
+├── firebase.json               # Firebase設定
+├── .firebaserc                 # Firebaseプロジェクト設定
+├── README.md                   # このファイル
+├── functions/                  # Cloud Functions
+│   ├── index.js               # 関数定義
+│   └── package.json           # Node.js依存関係
+└── docs/                       # スマホ用PWA
     ├── index.html
     ├── manifest.json
     └── firebase-config.js
 ```
+
+## Cloud Functions セットアップ
+
+### 1. Firebase CLIをインストール
+
+```bash
+npm install -g firebase-tools
+firebase login
+```
+
+### 2. Firebaseプロジェクトを設定
+
+```bash
+# .firebasercを編集してプロジェクトIDを設定
+# または以下のコマンドで設定
+firebase use your-project-id
+```
+
+### 3. 環境変数を設定
+
+```bash
+# Google API キーを設定
+firebase functions:secrets:set GOOGLE_API_KEY
+```
+
+### 4. デプロイ
+
+```bash
+cd functions
+npm install
+cd ..
+firebase deploy --only functions
+```
+
+### Cloud Functions 機能
+
+| 関数名 | トリガー | 説明 |
+|--------|---------|------|
+| `analyzeLifelogPhoto` | Storage (lifelogs/) | ライフログ写真をGemini Visionで自動分析 |
+| `healthCheck` | HTTPS | ヘルスチェック用エンドポイント |
+| `analyzePhotoManual` | HTTPS POST | 手動で写真を分析（デバッグ用） |
+
+### ライフログ自動分析の流れ
+
+1. Raspberry Piが定期的に写真を撮影
+2. Firebase Storageの `lifelogs/{date}/{time}.jpg` にアップロード
+3. Cloud Functions がトリガーされ、Gemini Vision APIで分析
+4. 分析結果がRealtime Database `lifelogs/{date}/{time}` に保存
+5. スマホアプリで分析結果を確認可能
 
 ## トラブルシューティング
 
