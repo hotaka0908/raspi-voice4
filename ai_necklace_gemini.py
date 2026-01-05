@@ -218,10 +218,10 @@ def signal_handler(sig, frame):
 
 def find_audio_device(p, device_type="input"):
     """オーディオデバイスを自動検出"""
-    # 入力デバイス用の名前リスト
-    input_target_names = ["usbmic", "USB PnP Sound", "USB Audio", "USB PnP Audio", "default"]
-    # 出力デバイス用の名前リスト
-    output_target_names = ["usbspk", "UACDemo", "USB Audio", "USB PnP Audio", "default"]
+    # 入力デバイス用の名前リスト（USB機器を優先、defaultは最後の手段）
+    input_target_names = ["usbmic", "USB PnP Sound", "USB Audio", "USB PnP Audio"]
+    # 出力デバイス用の名前リスト（UACDemo=USBスピーカーを優先）
+    output_target_names = ["usbspk", "UACDemo", "USB Audio", "USB PnP Audio"]
     target_names = input_target_names if device_type == "input" else output_target_names
 
     # デバッグ: 全デバイスを表示
