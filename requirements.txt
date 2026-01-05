@@ -15,7 +15,7 @@ google-auth-oauthlib
 
 # GPIO (Raspberry Pi)
 gpiozero
-lgpio
+# lgpio - システムのpython3-lgpioを使用（pip版はビルドに問題あり）
 
 # Firebase
 requests
