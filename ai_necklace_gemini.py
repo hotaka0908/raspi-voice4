@@ -1773,6 +1773,12 @@ class GeminiLiveClient:
                     }
                 }
             },
+            # プッシュトゥトークモード: 自動VADを無効化して手動制御
+            "realtime_input_config": {
+                "automatic_activity_detection": {
+                    "disabled": True
+                }
+            },
             "tools": get_gemini_tools(),
         }
 
@@ -1793,16 +1799,45 @@ class GeminiLiveClient:
             print(f"接続エラー: {e}")
             raise
 
-    async def send_audio_chunk(self, audio_data):
-        """音声チャンクを送信"""
+    async def send_activity_start(self):
+        """音声活動開始を通知（プッシュトゥトーク開始）"""
         if not self.is_connected or not self.session:
             return
 
         try:
-            # Gemini Live APIは {"data": bytes, "mime_type": str} 形式を期待
             await self.session.send_realtime_input(
-                audio={"data": audio_data, "mime_type": "audio/pcm"}
+                activity_start=types.ActivityStart()
             )
+            print("activity_start送信")
+        except Exception as e:
+            print(f"activity_start送信エラー: {e}")
+
+    async def send_activity_end(self):
+        """音声活動終了を通知（プッシュトゥトーク終了）"""
+        if not self.is_connected or not self.session:
+            return
+
+        try:
+            await self.session.send_realtime_input(
+                activity_end=types.ActivityEnd()
+            )
+            print("activity_end送信")
+        except Exception as e:
+            print(f"activity_end送信エラー: {e}")
+
+    async def send_audio_chunk(self, audio_data):
+        """音声チャンクを送信"""
+        if not self.is_connected or not self.session:
+            print(f"送信スキップ: connected={self.is_connected}, session={self.session is not None}")
+            return
+
+        try:
+            # Gemini Live APIは {"data": bytes, "mime_type": str} 形式を期待
+            # サンプルレートを明示的に指定
+            await self.session.send_realtime_input(
+                audio={"data": audio_data, "mime_type": "audio/pcm;rate=16000"}
+            )
+            print(".", end="", flush=True)  # 送信確認用ドット
         except Exception as e:
             print(f"音声送信エラー: {e}")
 
@@ -1835,12 +1870,13 @@ class GeminiLiveClient:
         """サーバーからのメッセージを受信"""
         global running
 
+        print("受信ループ開始")
         try:
             while running and self.is_connected:
                 try:
-                    # receive()はイテレータを返す
-                    turn = self.session.receive()
-                    async for response in turn:
+                    # receive()はイテレータを返す（待機）
+                    print("receive()呼び出し待機中...")
+                    async for response in self.session.receive():
                         if not running:
                             break
 
@@ -1858,6 +1894,8 @@ class GeminiLiveClient:
 
     async def handle_response(self, response):
         """レスポンスを処理"""
+        print(f"レスポンス受信: {type(response).__name__}")
+
         # サーバーコンテンツ
         if hasattr(response, 'server_content') and response.server_content:
             server_content = response.server_content
@@ -1994,19 +2032,23 @@ async def audio_input_loop(client: GeminiLiveClient, audio_handler: GeminiAudioH
 
                         if audio_handler.start_input_stream():
                             is_recording = True
+                            # 音声活動開始を通知
+                            await client.send_activity_start()
                         else:
                             print("録音開始失敗")
                             continue
 
                 # Gemini Live APIに音声を送信
                 chunk = audio_handler.read_audio_chunk()
-                if chunk:
+                if chunk and len(chunk) > 0:
                     await client.send_audio_chunk(chunk)
             else:
                 if is_recording:
                     is_recording = False
                     audio_handler.stop_input_stream()
                     print("ボタン離す - 録音停止")
+                    # 音声活動終了を通知（これがGeminiに応答を促す）
+                    await client.send_activity_end()
 
         await asyncio.sleep(0.01)
 
