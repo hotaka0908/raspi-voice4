@@ -914,6 +914,34 @@ def record_voice_message_sync():
     return wav_buffer
 
 
+def transcribe_audio_with_gemini(wav_data):
+    """Gemini APIで音声を文字起こし"""
+    global gemini_client
+
+    if not gemini_client:
+        print("Geminiクライアントが初期化されていません")
+        return None
+
+    try:
+        response = gemini_client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=[
+                types.Part.from_text(text="この音声の内容を正確に文字起こししてください。話された言葉をそのまま書き出してください。余計な説明は不要です。"),
+                types.Part.from_bytes(data=wav_data, mime_type="audio/wav")
+            ]
+        )
+
+        if response and response.text:
+            transcribed = response.text.strip()
+            print(f"文字起こし結果: {transcribed}")
+            return transcribed
+        return None
+
+    except Exception as e:
+        print(f"文字起こしエラー: {e}")
+        return None
+
+
 def send_recorded_voice_message():
     """録音した音声をスマホに送信"""
     global firebase_messenger, gemini_client, voice_message_mode, voice_message_mode_timestamp
@@ -931,17 +959,15 @@ def send_recorded_voice_message():
             print("録音データがありません")
             return False
 
-        # Geminiで文字起こし（TODO: 必要に応じて実装）
+        # Geminiで文字起こし
         print("音声をテキストに変換中...")
-        transcribed_text = None
-        # 現時点ではGemini Live APIで直接文字起こしを行う方法がないため、
-        # Whisperを使うかスキップする
-        # ここでは一旦スキップ
+        wav_buffer.seek(0)
+        wav_data = wav_buffer.read()
+        transcribed_text = transcribe_audio_with_gemini(wav_data)
 
         # Firebaseに送信
         print("スマホに送信中...")
-        wav_buffer.seek(0)
-        if firebase_messenger.send_message(wav_buffer.read(), text=transcribed_text):
+        if firebase_messenger.send_message(wav_data, text=transcribed_text):
             print("メッセージをスマホに送信しました")
             return True
         else:
