@@ -71,8 +71,9 @@ except ImportError:
 sys.stdout.reconfigure(line_buffering=True)
 sys.stderr.reconfigure(line_buffering=True)
 
-# 環境変数の読み込み
-load_dotenv()
+# 環境変数の読み込み（~/.ai-necklace/.env から）
+env_path = os.path.expanduser("~/.ai-necklace/.env")
+load_dotenv(env_path)
 
 # Gmail APIスコープ
 GMAIL_SCOPES = [
@@ -84,7 +85,7 @@ GMAIL_SCOPES = [
 # 設定
 CONFIG = {
     # Gemini Live API設定
-    "model": "gemini-2.5-flash-preview-native-audio-dialog",
+    "model": "gemini-2.5-flash-preview-native-audio-dialog",  # または "gemini-2.0-flash-live-001"
     "voice": "Kore",  # Gemini voice options: Puck, Charon, Kore, Fenrir, Aoede
 
     # オーディオ設定 (Gemini Live API仕様)
@@ -1710,9 +1711,10 @@ class GeminiLiveClient:
     RECONNECT_DELAY_BASE = 2  # 秒（指数バックオフの基底）
 
     def __init__(self, audio_handler: GeminiAudioHandler):
-        self.api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        # APIキーを取得（GOOGLE_API_KEY を優先）
+        self.api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
         if not self.api_key:
-            raise ValueError("GEMINI_API_KEY または GOOGLE_API_KEY が設定されていません")
+            raise ValueError("GOOGLE_API_KEY または GEMINI_API_KEY が設定されていません")
 
         self.audio_handler = audio_handler
         self.session = None
@@ -1723,7 +1725,7 @@ class GeminiLiveClient:
         self.needs_reconnect = False  # 再接続が必要かどうか
         self.reconnect_count = 0  # 連続再接続回数
 
-        # Geminiクライアント初期化
+        # Geminiクライアント初期化（環境変数から自動で読み込むが、明示的にも渡す）
         self.client = genai.Client(api_key=self.api_key)
 
     def get_config(self):
@@ -1762,8 +1764,9 @@ class GeminiLiveClient:
             return
 
         try:
+            # Gemini Live APIは {"data": bytes, "mime_type": str} 形式を期待
             await self.session.send_realtime_input(
-                audio=types.Blob(data=audio_data, mime_type="audio/pcm;rate=16000")
+                audio={"data": audio_data, "mime_type": "audio/pcm"}
             )
         except Exception as e:
             print(f"音声送信エラー: {e}")
@@ -1813,11 +1816,6 @@ class GeminiLiveClient:
 
     async def handle_response(self, response):
         """レスポンスを処理"""
-        # 音声データ
-        if hasattr(response, 'data') and response.data:
-            self.is_responding = True
-            self.audio_handler.play_audio_chunk(response.data)
-
         # サーバーコンテンツ
         if hasattr(response, 'server_content') and response.server_content:
             server_content = response.server_content
@@ -1826,6 +1824,18 @@ class GeminiLiveClient:
             if hasattr(server_content, 'interrupted') and server_content.interrupted:
                 print("割り込み検出")
                 self.is_responding = False
+
+            # モデルのターン（音声データを含む）
+            if hasattr(server_content, 'model_turn') and server_content.model_turn:
+                self.is_responding = True
+                for part in server_content.model_turn.parts:
+                    # 音声データ
+                    if hasattr(part, 'inline_data') and part.inline_data:
+                        if hasattr(part.inline_data, 'data') and isinstance(part.inline_data.data, bytes):
+                            self.audio_handler.play_audio_chunk(part.inline_data.data)
+                    # テキスト
+                    if hasattr(part, 'text') and part.text:
+                        print(f"[AI] {part.text}")
 
             # ターン完了
             if hasattr(server_content, 'turn_complete') and server_content.turn_complete:
@@ -1836,7 +1846,7 @@ class GeminiLiveClient:
             if hasattr(server_content, 'output_transcription') and server_content.output_transcription:
                 text = server_content.output_transcription.text
                 if text:
-                    print(f"[AI] {text}")
+                    print(f"[AI transcript] {text}")
 
         # ツール呼び出し
         if hasattr(response, 'tool_call') and response.tool_call:
@@ -2066,9 +2076,9 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
-    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
     if not api_key:
-        print("エラー: GEMINI_API_KEY または GOOGLE_API_KEY が設定されていません")
+        print("エラー: GOOGLE_API_KEY または GEMINI_API_KEY が設定されていません")
         sys.exit(1)
 
     # Geminiクライアント（カメラ用Vision API）
