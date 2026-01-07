@@ -122,42 +122,29 @@ CONFIG = {
     "lifelog_interval": 60,  # 1分（秒）
 
     # システムプロンプト
-    "instructions": """あなたは親切なAIアシスタントです。
-ユーザーの質問に簡潔に答えてください。
-日本語で回答してください。
-音声での会話なので、1-2文程度の短い応答を心がけてください。
+    "instructions": """あなたは日本語で会話するAIアシスタントです。
 
-利用可能なツール:
-- gmail_list: メール一覧取得
-- gmail_read: メール本文読み取り
-- gmail_send: 新規メール送信
-- gmail_reply: メール返信
-- alarm_set: アラーム設定
-- alarm_list: アラーム一覧取得
-- alarm_delete: アラーム削除
-- camera_capture: カメラで撮影して画像を説明
-- gmail_send_photo: 写真を撮影してメール送信
-- voice_send: スマホに音声メッセージを送信
-- voice_send_photo: 写真を撮影してスマホに送信
-- lifelog_start: ライフログ撮影を開始
-- lifelog_stop: ライフログ撮影を停止
-- lifelog_status: ライフログのステータス確認
+【最重要ルール】
+基本的にはユーザーと普通に会話してください。
+ツールは使わないでください。ユーザーが明確にツールの使用を依頼した場合のみツールを使ってください。
 
-ユーザーが「メールを確認」と言ったらgmail_listを使用。
-ユーザーが「写真を撮って」「何が見える？」と言ったらcamera_captureを使用。
-ユーザーが「アラームをセット」と言ったらalarm_setを使用。
-ユーザーが「ライフログ開始」「ライフログを始めて」と言ったらlifelog_startを使用。
-ユーザーが「ライフログ停止」「ライフログを止めて」と言ったらlifelog_stopを使用。
-ユーザーが「今日何枚撮った？」「ライフログの状態」と言ったらlifelog_statusを使用。
+【会話の例】
+- 「おはよう」→ 「おはようございます！」と返す（ツールは使わない）
+- 「今日の調子はどう？」→ 会話で返す（ツールは使わない）
+- 「何ができるの？」→ 会話で説明する（ツールは使わない）
 
-【voice_sendの厳格なルール】
-voice_sendツールは「スマホ」という単語が明確に聞こえた場合のみ呼び出してください。
-以下の場合は絶対にvoice_sendを呼び出さないでください：
-- 挨拶（おはよう、こんにちは、など）
-- 質問（今何時？、天気は？、など）
-- 数字のみの発話
-- 「スマホ」という単語が含まれない発話
-voice_sendを呼び出す前に、本当に「スマホ」という単語が聞こえたか確認してください。
+【ツールを使う場合】
+ユーザーが以下のような明確な依頼をした場合のみツールを使用：
+- 「メールを確認して」→ gmail_list
+- 「写真を撮って」→ camera_capture
+- 「アラームをセットして」→ alarm_set
+- 「スマホにメッセージを送って」→ voice_send
+
+【禁止事項】
+- 挨拶に対してツールを呼び出さない
+- 質問に対してツールを呼び出さない
+- 曖昧な発話に対してツールを呼び出さない
+- 迷ったらツールを使わず会話で返す
 """,
 }
 
@@ -1849,6 +1836,16 @@ class GeminiLiveClient:
             self.is_connected = True
             self.loop = asyncio.get_event_loop()
             print("Gemini Live API接続完了")
+
+            # 日本語プライミング: セッション開始時に日本語モードを明示
+            try:
+                await self.session.send_client_content(
+                    turns={"role": "user", "parts": [{"text": "日本語で会話しましょう。"}]},
+                    turn_complete=True
+                )
+                print("日本語プライミング完了")
+            except Exception as e:
+                print(f"プライミングスキップ: {e}")
         except Exception as e:
             print(f"接続エラー: {e}")
             raise
