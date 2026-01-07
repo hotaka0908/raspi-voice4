@@ -2064,8 +2064,9 @@ class GeminiLiveClient:
         await self.disconnect()
         self.pending_tool_calls = {}
 
-        # 状態をリセット
-        reset_voice_message_mode()
+        # voice_message_modeがアクティブな場合はリセットしない（録音待ちの可能性があるため）
+        if not voice_message_mode:
+            reset_voice_message_mode()
 
         try:
             await self.connect()
@@ -2097,8 +2098,9 @@ class GeminiLiveClient:
         self.needs_reconnect = False
         self.pending_tool_calls = {}
 
-        # 状態をリセット
-        reset_voice_message_mode()
+        # voice_message_modeがアクティブな場合はリセットしない
+        if not voice_message_mode:
+            reset_voice_message_mode()
 
         try:
             await self.connect()
