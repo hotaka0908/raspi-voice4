@@ -91,7 +91,7 @@ GMAIL_SCOPES = [
 # 設定
 CONFIG = {
     # Gemini Live API設定
-    "model": "gemini-2.5-flash-native-audio-preview-12-2025",
+    "model": "gemini-2.0-flash-exp",
     "voice": "Kore",  # Gemini voice options: Puck, Charon, Kore, Fenrir, Aoede
 
     # オーディオ設定 (Gemini Live API仕様)
