@@ -2032,6 +2032,26 @@ class GeminiLiveClient:
             self.is_connected = False
             print("Gemini Live API切断")
 
+    async def reset_session(self):
+        """セッションをリセットして新しい会話を開始"""
+        print("セッションリセット中...")
+
+        # 古い接続をクリーンアップ
+        await self.disconnect()
+        self.pending_tool_calls = {}
+
+        # 状態をリセット
+        reset_voice_message_mode()
+
+        try:
+            await self.connect()
+            print("セッションリセット完了 - 新しい会話を開始")
+            return True
+        except Exception as e:
+            print(f"セッションリセット失敗: {e}")
+            self.needs_reconnect = True
+            return False
+
     async def reconnect(self):
         """接続を再確立する（指数バックオフ付き）"""
         global running
@@ -2093,6 +2113,9 @@ async def audio_input_loop(client: GeminiLiveClient, audio_handler: GeminiAudioH
                         continue
                     else:
                         print("ボタン押下検出 - 録音開始")
+
+                        # 毎回セッションをリセットして新しい会話を開始
+                        await client.reset_session()
 
                         if audio_handler.start_input_stream():
                             is_recording = True
