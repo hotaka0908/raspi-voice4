@@ -1803,6 +1803,7 @@ class GeminiLiveClient:
         self.loop = None  # イベントループ参照（スレッド間通信用）
         self.needs_reconnect = False  # 再接続が必要かどうか
         self.reconnect_count = 0  # 連続再接続回数
+        self.needs_session_reset = False  # セッションリセットが必要かどうか
 
         # Geminiクライアント初期化（環境変数から自動で読み込むが、明示的にも渡す）
         self.client = genai.Client(api_key=self.api_key)
@@ -1973,6 +1974,8 @@ class GeminiLiveClient:
             if hasattr(server_content, 'turn_complete') and server_content.turn_complete:
                 self.is_responding = False
                 print("応答完了")
+                # 応答完了後にセッションリセットをスケジュール
+                self.needs_session_reset = True
 
             # 出力トランスクリプト
             if hasattr(server_content, 'output_transcription') and server_content.output_transcription:
@@ -2114,9 +2117,6 @@ async def audio_input_loop(client: GeminiLiveClient, audio_handler: GeminiAudioH
                     else:
                         print("ボタン押下検出 - 録音開始")
 
-                        # 毎回セッションをリセットして新しい会話を開始
-                        await client.reset_session()
-
                         if audio_handler.start_input_stream():
                             is_recording = True
                             # 音声活動開始を通知
@@ -2162,6 +2162,26 @@ async def main_async():
         start_lifelog_thread()
 
         while running:
+            # セッションリセットが必要な場合（応答完了後）
+            if client.needs_session_reset and client.is_connected:
+                client.needs_session_reset = False
+                print("セッションリセット実行中...")
+
+                # 受信タスクをキャンセル
+                if receive_task and not receive_task.done():
+                    receive_task.cancel()
+                    try:
+                        await receive_task
+                    except asyncio.CancelledError:
+                        pass
+
+                # セッションをリセット
+                await client.reset_session()
+
+                # 新しい受信タスクを開始
+                receive_task = asyncio.create_task(client.receive_messages())
+                print("セッションリセット完了 - 新しい会話の準備完了")
+
             # 接続されていない場合は接続を試みる
             if not client.is_connected:
                 if client.needs_reconnect:
