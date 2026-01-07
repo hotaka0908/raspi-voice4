@@ -81,6 +81,43 @@ sys.stderr.reconfigure(line_buffering=True)
 env_path = os.path.expanduser("~/.ai-necklace/.env")
 load_dotenv(env_path)
 
+# =====================================================
+# 会話ログ設定
+# =====================================================
+import logging
+from logging.handlers import RotatingFileHandler
+
+# ログディレクトリ作成
+LOG_DIR = os.path.expanduser("~/.ai-necklace/logs")
+os.makedirs(LOG_DIR, exist_ok=True)
+
+# 会話ログ専用のlogger
+conversation_logger = logging.getLogger("conversation")
+conversation_logger.setLevel(logging.INFO)
+
+# ファイルハンドラ（10MB x 5ファイルでローテーション）
+log_file = os.path.join(LOG_DIR, "conversation.log")
+file_handler = RotatingFileHandler(
+    log_file,
+    maxBytes=10*1024*1024,  # 10MB
+    backupCount=5,
+    encoding='utf-8'
+)
+file_handler.setFormatter(logging.Formatter('%(asctime)s | %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
+conversation_logger.addHandler(file_handler)
+
+# コンソールにも出力
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(logging.Formatter('%(asctime)s | %(message)s', datefmt='%H:%M:%S'))
+conversation_logger.addHandler(console_handler)
+
+def log_conversation(role: str, content: str, extra: str = None):
+    """会話ログを記録"""
+    if extra:
+        conversation_logger.info(f"[{role}] {content} ({extra})")
+    else:
+        conversation_logger.info(f"[{role}] {content}")
+
 # Gmail APIスコープ
 GMAIL_SCOPES = [
     'https://www.googleapis.com/auth/gmail.readonly',
@@ -1939,15 +1976,13 @@ class GeminiLiveClient:
 
     async def handle_response(self, response):
         """レスポンスを処理"""
-        print(f"レスポンス受信: {type(response).__name__}")
-
         # サーバーコンテンツ
         if hasattr(response, 'server_content') and response.server_content:
             server_content = response.server_content
 
             # 割り込み検出
             if hasattr(server_content, 'interrupted') and server_content.interrupted:
-                print("割り込み検出")
+                log_conversation("SYSTEM", "割り込み検出")
                 self.is_responding = False
 
             # モデルのターン（音声データを含む）
@@ -1958,34 +1993,28 @@ class GeminiLiveClient:
                     if hasattr(part, 'inline_data') and part.inline_data:
                         if hasattr(part.inline_data, 'data') and isinstance(part.inline_data.data, bytes):
                             self.audio_handler.play_audio_chunk(part.inline_data.data)
-                    # テキスト
+                    # テキスト（AIからのテキスト応答）
                     if hasattr(part, 'text') and part.text:
-                        print(f"[AI] {part.text}")
+                        log_conversation("AI-TEXT", part.text)
 
             # ターン完了
             if hasattr(server_content, 'turn_complete') and server_content.turn_complete:
                 self.is_responding = False
-                print("応答完了")
+                log_conversation("SYSTEM", "--- 応答完了 ---")
                 # 応答完了後にセッションリセットをスケジュール
                 self.needs_session_reset = True
 
-            # 出力トランスクリプト
+            # 出力トランスクリプト（AIの音声の文字起こし）
             if hasattr(server_content, 'output_transcription') and server_content.output_transcription:
                 text = server_content.output_transcription.text
-                if text:
-                    print(f"[AI transcript] {text}")
+                if text and text.strip():
+                    log_conversation("AI", text.strip())
 
             # 入力トランスクリプト（ユーザーの音声認識結果）
             if hasattr(server_content, 'input_transcription') and server_content.input_transcription:
                 text = server_content.input_transcription.text
-                if text:
-                    print(f"[USER] {text}")
-
-        # デバッグ: tool_callの有無を毎回確認
-        if hasattr(response, 'tool_call'):
-            tc = response.tool_call
-            if tc:
-                print(f"[DEBUG] tool_call found: {tc}")
+                if text and text.strip():
+                    log_conversation("USER", text.strip())
 
         # ツール呼び出し
         if hasattr(response, 'tool_call') and response.tool_call:
@@ -1995,7 +2024,7 @@ class GeminiLiveClient:
                 tool_name = fc.name
                 arguments = dict(fc.args) if fc.args else {}
 
-                print(f"ツール呼び出し: {tool_name}")
+                log_conversation("TOOL", f"{tool_name}", f"args: {arguments}")
 
                 # 長時間かかるツールは別スレッドで実行
                 if tool_name in ["voice_send_photo", "camera_capture", "gmail_send_photo"]:
@@ -2094,7 +2123,7 @@ async def audio_input_loop(client: GeminiLiveClient, audio_handler: GeminiAudioH
 
                     if current_voice_mode:
                         # 音声メッセージモード: 別スレッドで同期録音を実行
-                        print("音声メッセージ録音開始（スレッドモード）")
+                        log_conversation("SYSTEM", "=== 音声メッセージ録音開始 ===")
                         is_recording = True
                         # スレッドで実行してイベントループをブロックしない
                         loop = asyncio.get_event_loop()
@@ -2102,19 +2131,19 @@ async def audio_input_loop(client: GeminiLiveClient, audio_handler: GeminiAudioH
                         is_recording = False
                         # 結果をログに出力（Geminiに送ると再度ツール呼び出しされるため）
                         if success:
-                            print("メッセージ送信完了")
+                            log_conversation("SYSTEM", "音声メッセージ送信完了")
                         else:
-                            print("メッセージ送信失敗")
+                            log_conversation("SYSTEM", "音声メッセージ送信失敗")
                         continue
                     else:
-                        print("ボタン押下検出 - 録音開始")
+                        log_conversation("SYSTEM", "=== ボタン押下 - 録音開始 ===")
 
                         if audio_handler.start_input_stream():
                             is_recording = True
                             # 音声活動開始を通知
                             await client.send_activity_start()
                         else:
-                            print("録音開始失敗")
+                            log_conversation("SYSTEM", "録音開始失敗")
                             continue
 
                 # Gemini Live APIに音声を送信
@@ -2125,7 +2154,7 @@ async def audio_input_loop(client: GeminiLiveClient, audio_handler: GeminiAudioH
                 if is_recording:
                     is_recording = False
                     audio_handler.stop_input_stream()
-                    print("ボタン離す - 録音停止")
+                    log_conversation("SYSTEM", "=== ボタン離す - 録音停止 ===")
                     # 音声活動終了を通知（これがGeminiに応答を促す）
                     await client.send_activity_end()
 
