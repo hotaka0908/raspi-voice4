@@ -2136,6 +2136,8 @@ async def audio_input_loop(client: GeminiLiveClient, audio_handler: GeminiAudioH
                             log_conversation("SYSTEM", "音声メッセージ送信完了")
                         else:
                             log_conversation("SYSTEM", "音声メッセージ送信失敗")
+                        # 音声メッセージ送信完了後にセッションリセット
+                        client.needs_session_reset = True
                         continue
                     else:
                         log_conversation("SYSTEM", "=== ボタン押下 - 録音開始 ===")
