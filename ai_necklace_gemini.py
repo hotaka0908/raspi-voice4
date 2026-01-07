@@ -1836,16 +1836,6 @@ class GeminiLiveClient:
             self.is_connected = True
             self.loop = asyncio.get_event_loop()
             print("Gemini Live API接続完了")
-
-            # 日本語プライミング: セッション開始時に日本語モードを明示
-            try:
-                await self.session.send_client_content(
-                    turns={"role": "user", "parts": [{"text": "日本語で会話しましょう。"}]},
-                    turn_complete=True
-                )
-                print("日本語プライミング完了")
-            except Exception as e:
-                print(f"プライミングスキップ: {e}")
         except Exception as e:
             print(f"接続エラー: {e}")
             raise
