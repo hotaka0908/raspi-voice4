@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Necklace - Voice Demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #888;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 25px;
+        }
+
+        .panel h2 {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .panel h2 .step {
+            background: #4ade80;
+            color: #000;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        /* QRコードセクション */
+        .qr-section {
+            text-align: center;
+        }
+
+        .qr-code {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            display: inline-block;
+            margin: 15px 0;
+        }
+
+        .qr-code canvas {
+            display: block;
+        }
+
+        .room-id {
+            font-family: monospace;
+            font-size: 1.5rem;
+            color: #4ade80;
+            margin: 15px 0;
+            letter-spacing: 2px;
+        }
+
+        .url-box {
+            background: rgba(0,0,0,0.3);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            word-break: break-all;
+            color: #888;
+            margin-top: 15px;
+        }
+
+        .copy-btn {
+            margin-top: 10px;
+            padding: 10px 20px;
+            background: #4ade80;
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .copy-btn:hover {
+            background: #22c55e;
+        }
+
+        /* チャットセクション */
+        .chat-section {
+            display: flex;
+            flex-direction: column;
+            height: 500px;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 15px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #666;
+        }
+
+        .status-dot.waiting {
+            background: #ffc107;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-dot.connected {
+            background: #4ade80;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            margin-bottom: 15px;
+        }
+
+        .message {
+            margin-bottom: 15px;
+        }
+
+        .message.received {
+            text-align: left;
+        }
+
+        .message.sent {
+            text-align: right;
+        }
+
+        .message .label {
+            font-size: 0.75rem;
+            color: #888;
+            margin-bottom: 4px;
+        }
+
+        .message .bubble {
+            display: inline-block;
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 16px;
+            cursor: pointer;
+        }
+
+        .message.received .bubble {
+            background: rgba(255,255,255,0.1);
+            border-bottom-left-radius: 4px;
+        }
+
+        .message.sent .bubble {
+            background: #4ade80;
+            color: #000;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message .bubble.playing {
+            animation: playing 0.5s infinite alternate;
+        }
+
+        @keyframes playing {
+            from { opacity: 1; }
+            to { opacity: 0.6; }
+        }
+
+        .message .time {
+            font-size: 0.7rem;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .empty-messages {
+            text-align: center;
+            color: #666;
+            padding: 40px;
+        }
+
+        /* 録音バー */
+        .record-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            padding: 15px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+        }
+
+        .record-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 3px solid #4ade80;
+            background: transparent;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+        }
+
+        .record-btn:disabled {
+            border-color: #666;
+            cursor: not-allowed;
+        }
+
+        .record-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 30px;
+            height: 30px;
+            background: #4ade80;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+
+        .record-btn:disabled::before {
+            background: #666;
+        }
+
+        .record-btn.recording {
+            border-color: #ef4444;
+        }
+
+        .record-btn.recording::before {
+            background: #ef4444;
+            border-radius: 6px;
+            width: 24px;
+            height: 24px;
+        }
+
+        .record-hint {
+            color: #888;
+            font-size: 0.85rem;
+        }
+
+        /* フッター */
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            color: #666;
+            font-size: 0.85rem;
+        }
+
+        .footer a {
+            color: #4ade80;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AI Necklace - Voice Demo</h1>
+            <p>スマホとPC間で音声メッセージをやり取りできます</p>
+        </div>
+
+        <div class="main-content">
+            <!-- 左側: QRコード -->
+            <div class="panel qr-section">
+                <h2><span class="step">1</span> スマホでQRコードを読み取る</h2>
+                <div class="qr-code" id="qrCode"></div>
+                <div class="room-id" id="roomId"></div>
+                <p style="color:#888;font-size:0.9rem;">このルームIDは一時的なものです</p>
+                <div class="url-box" id="urlBox"></div>
+                <button class="copy-btn" id="copyBtn">URLをコピー</button>
+            </div>
+
+            <!-- 右側: チャット -->
+            <div class="panel chat-section">
+                <h2><span class="step">2</span> メッセージを送受信</h2>
+                <div class="connection-status">
+                    <span class="status-dot waiting" id="statusDot"></span>
+                    <span id="statusText">スマホの接続を待っています...</span>
+                </div>
+                <div class="messages" id="messages">
+                    <div class="empty-messages">スマホが接続されるとメッセージが表示されます</div>
+                </div>
+                <div class="record-bar">
+                    <button class="record-btn" id="recordBtn" disabled></button>
+                    <span class="record-hint">押しながら話す</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <a href="ai-chat.html">AI Chat Demo</a> |
+            <a href="https://github.com/hotaka0908/raspi-voice4" target="_blank">GitHub</a>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, push, onValue, onChildAdded, set, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
+        import firebaseConfig from './firebase-config.js';
+
+        // Firebase初期化
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const storage = getStorage(app);
+
+        // DOM要素
+        const qrCodeEl = document.getElementById('qrCode');
+        const roomIdEl = document.getElementById('roomId');
+        const urlBoxEl = document.getElementById('urlBox');
+        const copyBtn = document.getElementById('copyBtn');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const messagesEl = document.getElementById('messages');
+        const recordBtn = document.getElementById('recordBtn');
+
+        // 状態
+        let roomId = null;
+        let isConnected = false;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+        let currentAudio = null;
+
+        // Room ID生成（6文字）
+        function generateRoomId() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let result = '';
+            for (let i = 0; i < 6; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        // 初期化
+        async function init() {
+            // Room IDを生成
+            roomId = generateRoomId();
+            roomIdEl.textContent = roomId;
+
+            // QRコード用URL
+            const phoneUrl = `${window.location.origin}/phone.html?room=${roomId}`;
+            urlBoxEl.textContent = phoneUrl;
+
+            // QRコード生成
+            QRCode.toCanvas(qrCodeEl.querySelector('canvas') || document.createElement('canvas'), phoneUrl, {
+                width: 200,
+                margin: 0,
+                color: { dark: '#000', light: '#fff' }
+            }, (error, canvas) => {
+                if (error) console.error(error);
+                qrCodeEl.innerHTML = '';
+                qrCodeEl.appendChild(canvas);
+            });
+
+            // URLコピー
+            copyBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(phoneUrl);
+                copyBtn.textContent = 'コピーしました!';
+                setTimeout(() => copyBtn.textContent = 'URLをコピー', 2000);
+            });
+
+            // ルームの存在を登録
+            const roomRef = ref(db, `rooms/${roomId}`);
+            await set(roomRef, {
+                created: Date.now(),
+                pcConnected: true
+            });
+
+            // スマホ接続を監視
+            const phoneRef = ref(db, `rooms/${roomId}/phoneConnected`);
+            onValue(phoneRef, (snapshot) => {
+                if (snapshot.val() === true) {
+                    isConnected = true;
+                    statusDot.classList.remove('waiting');
+                    statusDot.classList.add('connected');
+                    statusText.textContent = 'スマホが接続されました';
+                    recordBtn.disabled = false;
+                }
+            });
+
+            // メッセージを監視
+            const messagesRef = ref(db, `rooms/${roomId}/messages`);
+            onChildAdded(messagesRef, (snapshot) => {
+                const msg = snapshot.val();
+                if (msg) {
+                    addMessageToUI(msg);
+                }
+            });
+
+            // 録音ボタン
+            recordBtn.addEventListener('mousedown', startRecording);
+            recordBtn.addEventListener('mouseup', stopRecording);
+            recordBtn.addEventListener('mouseleave', stopRecording);
+            recordBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startRecording(); });
+            recordBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopRecording(); });
+        }
+
+        // メッセージをUIに追加
+        function addMessageToUI(msg) {
+            const emptyMsg = messagesEl.querySelector('.empty-messages');
+            if (emptyMsg) emptyMsg.remove();
+
+            const isSent = msg.from === 'pc';
+            const div = document.createElement('div');
+            div.className = `message ${isSent ? 'sent' : 'received'}`;
+
+            const time = new Date(msg.timestamp).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+
+            div.innerHTML = `
+                <div class="label">${isSent ? 'あなた (PC)' : 'スマホ'}</div>
+                <div class="bubble" data-url="${msg.audio_url || ''}">${msg.text || '🎤 音声メッセージ'}</div>
+                <div class="time">${time}</div>
+            `;
+
+            // クリックで再生
+            const bubble = div.querySelector('.bubble');
+            if (msg.audio_url) {
+                bubble.addEventListener('click', () => playAudio(bubble, msg.audio_url));
+            }
+
+            messagesEl.appendChild(div);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
+        // 音声再生
+        function playAudio(bubble, url) {
+            if (currentAudio) {
+                currentAudio.pause();
+                document.querySelectorAll('.bubble.playing').forEach(b => b.classList.remove('playing'));
+            }
+
+            if (bubble.classList.contains('playing')) {
+                currentAudio = null;
+                return;
+            }
+
+            bubble.classList.add('playing');
+            currentAudio = new Audio(url);
+            currentAudio.play();
+            currentAudio.onended = () => {
+                bubble.classList.remove('playing');
+                currentAudio = null;
+            };
+        }
+
+        // 録音開始
+        async function startRecording() {
+            if (!isConnected || isRecording) return;
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    stream.getTracks().forEach(track => track.stop());
+                    await sendVoiceMessage(audioBlob);
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                recordBtn.classList.add('recording');
+            } catch (err) {
+                console.error('Recording error:', err);
+                alert('マイクへのアクセスを許可してください');
+            }
+        }
+
+        // 録音停止
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                recordBtn.classList.remove('recording');
+            }
+        }
+
+        // 音声メッセージ送信
+        async function sendVoiceMessage(audioBlob) {
+            try {
+                const timestamp = Date.now();
+                const filename = `pc_${roomId}_${timestamp}.webm`;
+
+                // Storageにアップロード
+                const audioStorageRef = storageRef(storage, `rooms/${roomId}/${filename}`);
+                await uploadBytes(audioStorageRef, audioBlob);
+                const audioUrl = await getDownloadURL(audioStorageRef);
+
+                // Databaseに保存
+                const messagesRef = ref(db, `rooms/${roomId}/messages`);
+                await push(messagesRef, {
+                    from: 'pc',
+                    audio_url: audioUrl,
+                    timestamp: timestamp
+                });
+            } catch (err) {
+                console.error('Send error:', err);
+                alert('送信に失敗しました');
+            }
+        }
+
+        // 初期化実行
+        init();
+    </script>
+</body>
+</html>

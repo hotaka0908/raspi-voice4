@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>AI Necklace - Phone</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            position: fixed;
+            width: 100%;
+        }
+
+        .container {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            padding-top: env(safe-area-inset-top, 15px);
+            padding-bottom: env(safe-area-inset-bottom, 15px);
+        }
+
+        /* ヘッダー */
+        .header {
+            text-align: center;
+            padding: 15px 0;
+            flex-shrink: 0;
+        }
+
+        .header h1 {
+            font-size: 1.3rem;
+            margin-bottom: 5px;
+        }
+
+        .room-badge {
+            display: inline-block;
+            background: rgba(74, 222, 128, 0.2);
+            border: 1px solid #4ade80;
+            color: #4ade80;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-family: monospace;
+            font-size: 1rem;
+            letter-spacing: 2px;
+        }
+
+        /* ステータス */
+        .status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px;
+            font-size: 0.85rem;
+            color: #888;
+            flex-shrink: 0;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4ade80;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* メッセージエリア */
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .message {
+            margin-bottom: 15px;
+        }
+
+        .message.received {
+            text-align: left;
+        }
+
+        .message.sent {
+            text-align: right;
+        }
+
+        .message .label {
+            font-size: 0.7rem;
+            color: #888;
+            margin-bottom: 4px;
+        }
+
+        .message .bubble {
+            display: inline-block;
+            max-width: 85%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .message .bubble:active {
+            opacity: 0.7;
+        }
+
+        .message.received .bubble {
+            background: rgba(255,255,255,0.1);
+            border-bottom-left-radius: 4px;
+        }
+
+        .message.sent .bubble {
+            background: #4ade80;
+            color: #000;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message .bubble.playing {
+            animation: playing 0.5s infinite alternate;
+        }
+
+        @keyframes playing {
+            from { opacity: 1; }
+            to { opacity: 0.5; }
+        }
+
+        .message .time {
+            font-size: 0.65rem;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .empty-messages {
+            text-align: center;
+            color: #666;
+            padding: 40px 20px;
+            font-size: 0.9rem;
+        }
+
+        /* 録音バー */
+        .record-bar {
+            flex-shrink: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            gap: 15px;
+        }
+
+        .record-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            border: 4px solid #4ade80;
+            background: transparent;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .record-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 35px;
+            height: 35px;
+            background: #4ade80;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+
+        .record-btn.recording {
+            border-color: #ef4444;
+            animation: pulse-ring 1s infinite;
+        }
+
+        .record-btn.recording::before {
+            background: #ef4444;
+            border-radius: 8px;
+            width: 26px;
+            height: 26px;
+        }
+
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            100% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+        }
+
+        .record-hint {
+            color: #888;
+            font-size: 0.85rem;
+        }
+
+        /* エラー画面 */
+        .error-screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            padding: 30px;
+        }
+
+        .error-screen.active {
+            display: flex;
+        }
+
+        .error-screen h2 {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            color: #ef4444;
+        }
+
+        .error-screen p {
+            color: #888;
+            margin-bottom: 20px;
+        }
+
+        .error-screen button {
+            padding: 12px 30px;
+            background: #4ade80;
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .main-content.hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- エラー画面 -->
+        <div class="error-screen" id="errorScreen">
+            <h2>ルームが見つかりません</h2>
+            <p>QRコードを再度読み取るか、<br>PCでルームを作成してください</p>
+            <button onclick="location.href='demo.html'">PCで開く</button>
+        </div>
+
+        <!-- メイン画面 -->
+        <div class="main-content" id="mainContent">
+            <div class="header">
+                <h1>Voice Demo</h1>
+                <div class="room-badge" id="roomBadge">------</div>
+            </div>
+
+            <div class="status">
+                <span class="status-dot"></span>
+                <span>PCと接続中</span>
+            </div>
+
+            <div class="messages" id="messages">
+                <div class="empty-messages">マイクボタンを押しながら<br>話しかけてください</div>
+            </div>
+
+            <div class="record-bar">
+                <button class="record-btn" id="recordBtn"></button>
+                <span class="record-hint">押しながら話す</span>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, push, onValue, onChildAdded, set, get } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
+        import firebaseConfig from './firebase-config.js';
+
+        // Firebase初期化
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const storage = getStorage(app);
+
+        // DOM要素
+        const errorScreen = document.getElementById('errorScreen');
+        const mainContent = document.getElementById('mainContent');
+        const roomBadge = document.getElementById('roomBadge');
+        const messagesEl = document.getElementById('messages');
+        const recordBtn = document.getElementById('recordBtn');
+
+        // 状態
+        let roomId = null;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+        let currentAudio = null;
+
+        // URLからRoom IDを取得
+        function getRoomIdFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('room');
+        }
+
+        // 初期化
+        async function init() {
+            roomId = getRoomIdFromUrl();
+
+            if (!roomId) {
+                showError();
+                return;
+            }
+
+            // ルームの存在確認
+            const roomRef = ref(db, `rooms/${roomId}`);
+            const snapshot = await get(roomRef);
+
+            if (!snapshot.exists()) {
+                showError();
+                return;
+            }
+
+            // 表示
+            roomBadge.textContent = roomId;
+            mainContent.classList.remove('hidden');
+            errorScreen.classList.remove('active');
+
+            // スマホ接続を登録
+            await set(ref(db, `rooms/${roomId}/phoneConnected`), true);
+
+            // メッセージを監視
+            const messagesRef = ref(db, `rooms/${roomId}/messages`);
+            onChildAdded(messagesRef, (snapshot) => {
+                const msg = snapshot.val();
+                if (msg) {
+                    addMessageToUI(msg);
+                }
+            });
+
+            // 録音ボタン
+            recordBtn.addEventListener('mousedown', startRecording);
+            recordBtn.addEventListener('mouseup', stopRecording);
+            recordBtn.addEventListener('mouseleave', stopRecording);
+            recordBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startRecording(); });
+            recordBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopRecording(); });
+        }
+
+        function showError() {
+            errorScreen.classList.add('active');
+            mainContent.classList.add('hidden');
+        }
+
+        // メッセージをUIに追加
+        function addMessageToUI(msg) {
+            const emptyMsg = messagesEl.querySelector('.empty-messages');
+            if (emptyMsg) emptyMsg.remove();
+
+            const isSent = msg.from === 'phone';
+            const div = document.createElement('div');
+            div.className = `message ${isSent ? 'sent' : 'received'}`;
+
+            const time = new Date(msg.timestamp).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+
+            div.innerHTML = `
+                <div class="label">${isSent ? 'あなた' : 'PC'}</div>
+                <div class="bubble" data-url="${msg.audio_url || ''}">${msg.text || '🎤 音声メッセージ'}</div>
+                <div class="time">${time}</div>
+            `;
+
+            // タップで再生
+            const bubble = div.querySelector('.bubble');
+            if (msg.audio_url) {
+                bubble.addEventListener('click', () => playAudio(bubble, msg.audio_url));
+            }
+
+            messagesEl.appendChild(div);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
+        // 音声再生
+        function playAudio(bubble, url) {
+            if (currentAudio) {
+                currentAudio.pause();
+                document.querySelectorAll('.bubble.playing').forEach(b => b.classList.remove('playing'));
+            }
+
+            if (bubble.classList.contains('playing')) {
+                currentAudio = null;
+                return;
+            }
+
+            bubble.classList.add('playing');
+            currentAudio = new Audio(url);
+            currentAudio.play();
+            currentAudio.onended = () => {
+                bubble.classList.remove('playing');
+                currentAudio = null;
+            };
+        }
+
+        // 録音開始
+        async function startRecording() {
+            if (isRecording) return;
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    stream.getTracks().forEach(track => track.stop());
+                    await sendVoiceMessage(audioBlob);
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                recordBtn.classList.add('recording');
+            } catch (err) {
+                console.error('Recording error:', err);
+                alert('マイクへのアクセスを許可してください');
+            }
+        }
+
+        // 録音停止
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                recordBtn.classList.remove('recording');
+            }
+        }
+
+        // 音声メッセージ送信
+        async function sendVoiceMessage(audioBlob) {
+            try {
+                const timestamp = Date.now();
+                const filename = `phone_${roomId}_${timestamp}.webm`;
+
+                // Storageにアップロード
+                const audioStorageRef = storageRef(storage, `rooms/${roomId}/${filename}`);
+                await uploadBytes(audioStorageRef, audioBlob);
+                const audioUrl = await getDownloadURL(audioStorageRef);
+
+                // Databaseに保存
+                const messagesRef = ref(db, `rooms/${roomId}/messages`);
+                await push(messagesRef, {
+                    from: 'phone',
+                    audio_url: audioUrl,
+                    timestamp: timestamp
+                });
+            } catch (err) {
+                console.error('Send error:', err);
+                alert('送信に失敗しました');
+            }
+        }
+
+        // 初期化実行
+        init();
+    </script>
+</body>
+</html>
