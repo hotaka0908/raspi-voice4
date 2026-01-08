@@ -1823,6 +1823,7 @@ class GeminiLiveClient:
     # 再接続設定
     MAX_RECONNECT_ATTEMPTS = 5
     RECONNECT_DELAY_BASE = 2  # 秒（指数バックオフの基底）
+    SESSION_RESET_TIMEOUT = 30  # 秒（最後の応答からこの時間経過でセッションリセット）
 
     def __init__(self, audio_handler: GeminiAudioHandler):
         # APIキーを取得（GOOGLE_API_KEY を優先）
@@ -1840,6 +1841,7 @@ class GeminiLiveClient:
         self.needs_reconnect = False  # 再接続が必要かどうか
         self.reconnect_count = 0  # 連続再接続回数
         self.needs_session_reset = False  # セッションリセットが必要かどうか
+        self.last_response_time = None  # 最後の応答完了時刻（タイムアウト管理用）
 
         # Geminiクライアント初期化（環境変数から自動で読み込むが、明示的にも渡す）
         self.client = genai.Client(api_key=self.api_key)
@@ -2012,8 +2014,8 @@ class GeminiLiveClient:
             if hasattr(server_content, 'turn_complete') and server_content.turn_complete:
                 self.is_responding = False
                 log_conversation("SYSTEM", "--- 応答完了 ---")
-                # 応答完了後にセッションリセットをスケジュール
-                self.needs_session_reset = True
+                # 応答完了時刻を記録（30秒後にセッションリセット、ボタン押下でキャンセル）
+                self.last_response_time = time.time()
 
             # 出力トランスクリプト（AIの音声の文字起こし）
             if hasattr(server_content, 'output_transcription') and server_content.output_transcription:
@@ -2156,6 +2158,8 @@ async def audio_input_loop(client: GeminiLiveClient, audio_handler: GeminiAudioH
                         client.needs_session_reset = True
                         continue
                     else:
+                        # ボタンが押されたのでセッションリセットタイマーをキャンセル
+                        client.last_response_time = None
                         log_conversation("SYSTEM", "=== ボタン押下 - 録音開始 ===")
 
                         if audio_handler.start_input_stream():
@@ -2203,7 +2207,15 @@ async def main_async():
         start_lifelog_thread()
 
         while running:
-            # セッションリセットが必要な場合（応答完了後）
+            # タイムアウトによるセッションリセットチェック（30秒間操作がなければリセット）
+            if client.last_response_time and client.is_connected:
+                elapsed = time.time() - client.last_response_time
+                if elapsed >= client.SESSION_RESET_TIMEOUT:
+                    log_conversation("SYSTEM", f"--- {client.SESSION_RESET_TIMEOUT}秒間操作なし - セッションリセット ---")
+                    client.needs_session_reset = True
+                    client.last_response_time = None
+
+            # セッションリセットが必要な場合
             if client.needs_session_reset and client.is_connected:
                 client.needs_session_reset = False
                 print("セッションリセット実行中...")
