@@ -295,6 +295,11 @@ aplay -l    # デバイス一覧を確認
 
 MIT License
 
+## デプロイ済みURL
+
+- **Web版 AI Chat**: https://raspi-111.web.app/ai-chat.html
+- **Voice Messenger**: https://raspi-111.web.app/
+
 ## リンク
 
 - [Gemini Live API ドキュメント](https://ai.google.dev/gemini-api/docs/live)

@@ -271,6 +271,16 @@ Realtime Database (結果保存)
 
 ---
 
+## Web版デモ
+
+ハードウェアがなくてもブラウザでAI Necklaceの音声対話機能を体験できます。
+
+**Web版デモ**: https://raspi-111.web.app/ai-chat.html
+
+1. Gemini APIキーを入力して「接続」
+2. マイクボタンを押しながら話しかける
+3. AIが音声で応答
+
 ## 今後の展望
 
 - **マルチモーダル対応強化**: カメラ映像のリアルタイム認識
@@ -282,8 +292,8 @@ Realtime Database (結果保存)
 
 ## リンク
 
-- **GitHub**: https://github.com/yourusername/raspi-voice4
-- **デプロイURL**: https://your-project.web.app
+- **GitHub**: https://github.com/hotaka0908/raspi-voice4
+- **Web版デモ**: https://raspi-111.web.app/ai-chat.html
 
 ---
 

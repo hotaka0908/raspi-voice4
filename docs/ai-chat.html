@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>AI Necklace - Web Demo</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ヘッダー */
+        .header {
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        /* API Key 設定 */
+        .api-key-section {
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .api-key-section label {
+            display: block;
+            font-size: 0.85rem;
+            color: #aaa;
+            margin-bottom: 8px;
+        }
+
+        .api-key-input-wrapper {
+            display: flex;
+            gap: 10px;
+        }
+
+        .api-key-section input {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            font-size: 0.9rem;
+        }
+
+        .api-key-section input::placeholder {
+            color: #666;
+        }
+
+        .api-key-section button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            background: #4ade80;
+            color: #000;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .api-key-section button:hover {
+            background: #22c55e;
+        }
+
+        .api-key-section button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        .api-key-section.connected {
+            background: rgba(74, 222, 128, 0.2);
+            border: 1px solid #4ade80;
+        }
+
+        /* ステータス */
+        .status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px;
+            font-size: 0.85rem;
+            color: #888;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #666;
+        }
+
+        .status-dot.connected {
+            background: #4ade80;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.recording {
+            background: #ef4444;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* チャットエリア */
+        .chat-area {
+            flex: 1;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            overflow-y: auto;
+            max-height: 400px;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message.user {
+            align-items: flex-end;
+        }
+
+        .message.ai {
+            align-items: flex-start;
+        }
+
+        .message-label {
+            font-size: 0.75rem;
+            color: #888;
+            margin-bottom: 4px;
+        }
+
+        .message-bubble {
+            max-width: 85%;
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+
+        .message.user .message-bubble {
+            background: #4ade80;
+            color: #000;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.ai .message-bubble {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message.system .message-bubble {
+            background: rgba(255,193,7,0.2);
+            color: #ffc107;
+            font-size: 0.85rem;
+            text-align: center;
+            max-width: 100%;
+        }
+
+        .empty-chat {
+            text-align: center;
+            color: #666;
+            padding: 40px;
+        }
+
+        /* 録音ボタン */
+        .record-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .record-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 4px solid #4ade80;
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .record-btn:disabled {
+            border-color: #666;
+            cursor: not-allowed;
+        }
+
+        .record-btn::before {
+            content: '';
+            width: 40px;
+            height: 40px;
+            background: #4ade80;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+
+        .record-btn:disabled::before {
+            background: #666;
+        }
+
+        .record-btn.recording {
+            border-color: #ef4444;
+            animation: pulse-ring 1s infinite;
+        }
+
+        .record-btn.recording::before {
+            background: #ef4444;
+            border-radius: 8px;
+            width: 30px;
+            height: 30px;
+        }
+
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            100% { box-shadow: 0 0 0 20px rgba(239, 68, 68, 0); }
+        }
+
+        .record-hint {
+            margin-top: 15px;
+            font-size: 0.85rem;
+            color: #888;
+        }
+
+        /* AI発話中インジケーター */
+        .speaking-indicator {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: rgba(74, 222, 128, 0.2);
+            border-radius: 20px;
+            margin-bottom: 15px;
+        }
+
+        .speaking-indicator.active {
+            display: flex;
+        }
+
+        .speaking-bars {
+            display: flex;
+            gap: 3px;
+            align-items: center;
+        }
+
+        .speaking-bars span {
+            width: 4px;
+            height: 16px;
+            background: #4ade80;
+            border-radius: 2px;
+            animation: speaking 0.5s ease-in-out infinite;
+        }
+
+        .speaking-bars span:nth-child(2) { animation-delay: 0.1s; }
+        .speaking-bars span:nth-child(3) { animation-delay: 0.2s; }
+        .speaking-bars span:nth-child(4) { animation-delay: 0.3s; }
+
+        @keyframes speaking {
+            0%, 100% { height: 8px; }
+            50% { height: 20px; }
+        }
+
+        /* フッター */
+        .footer {
+            text-align: center;
+            padding: 15px;
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .footer a {
+            color: #4ade80;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AI Necklace</h1>
+            <p>Gemini Live API Web Demo</p>
+        </div>
+
+        <div class="api-key-section" id="apiKeySection">
+            <label>Gemini API Key</label>
+            <div class="api-key-input-wrapper">
+                <input type="password" id="apiKeyInput" placeholder="AIza...">
+                <button id="connectBtn">接続</button>
+            </div>
+        </div>
+
+        <div class="status">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="statusText">未接続</span>
+        </div>
+
+        <div class="chat-area" id="chatArea">
+            <div class="empty-chat">マイクボタンを押しながら話しかけてください</div>
+        </div>
+
+        <div class="speaking-indicator" id="speakingIndicator">
+            <div class="speaking-bars">
+                <span></span><span></span><span></span><span></span>
+            </div>
+            <span>AIが話しています...</span>
+        </div>
+
+        <div class="record-section">
+            <button class="record-btn" id="recordBtn" disabled></button>
+            <div class="record-hint">押しながら話す</div>
+        </div>
+
+        <div class="footer">
+            <a href="https://github.com/hotaka0908/raspi-voice4" target="_blank">GitHub</a>
+             |
+            <a href="index.html">Voice Messenger</a>
+        </div>
+    </div>
+
+    <script type="module">
+        // DOM要素
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const apiKeySection = document.getElementById('apiKeySection');
+        const connectBtn = document.getElementById('connectBtn');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const chatArea = document.getElementById('chatArea');
+        const recordBtn = document.getElementById('recordBtn');
+        const speakingIndicator = document.getElementById('speakingIndicator');
+
+        // 状態
+        let websocket = null;
+        let isConnected = false;
+        let isRecording = false;
+        let audioContext = null;
+        let mediaStream = null;
+        let audioWorklet = null;
+        let audioQueue = [];
+        let isPlaying = false;
+
+        // 保存されたAPIキーを復元
+        const savedApiKey = localStorage.getItem('gemini_api_key');
+        if (savedApiKey) {
+            apiKeyInput.value = savedApiKey;
+        }
+
+        // 接続ボタン
+        connectBtn.addEventListener('click', async () => {
+            const apiKey = apiKeyInput.value.trim();
+            if (!apiKey) {
+                alert('APIキーを入力してください');
+                return;
+            }
+
+            if (isConnected) {
+                disconnect();
+            } else {
+                await connect(apiKey);
+            }
+        });
+
+        // 接続
+        async function connect(apiKey) {
+            try {
+                updateStatus('connecting', '接続中...');
+
+                // APIキーを保存
+                localStorage.setItem('gemini_api_key', apiKey);
+
+                // AudioContext初期化
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                    sampleRate: 24000
+                });
+
+                // マイクアクセス
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        sampleRate: 16000,
+                        channelCount: 1,
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    }
+                });
+
+                // WebSocket接続
+                const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`;
+                websocket = new WebSocket(wsUrl);
+
+                websocket.onopen = () => {
+                    console.log('WebSocket connected');
+                    sendSetup();
+                };
+
+                websocket.onmessage = (event) => {
+                    handleMessage(event.data);
+                };
+
+                websocket.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    updateStatus('disconnected', '接続エラー');
+                };
+
+                websocket.onclose = () => {
+                    console.log('WebSocket closed');
+                    disconnect();
+                };
+
+            } catch (error) {
+                console.error('Connection error:', error);
+                alert('接続に失敗しました: ' + error.message);
+                updateStatus('disconnected', '接続失敗');
+            }
+        }
+
+        // セットアップメッセージ送信
+        function sendSetup() {
+            const setup = {
+                setup: {
+                    model: "models/gemini-2.0-flash-live-001",
+                    generation_config: {
+                        response_modalities: ["AUDIO"],
+                        speech_config: {
+                            voice_config: {
+                                prebuilt_voice_config: {
+                                    voice_name: "Kore"
+                                }
+                            }
+                        }
+                    },
+                    system_instruction: {
+                        parts: [{
+                            text: "あなたは親切なAIアシスタントです。日本語で簡潔に回答してください。音声での会話なので、1-2文程度の短い応答を心がけてください。"
+                        }]
+                    }
+                }
+            };
+            websocket.send(JSON.stringify(setup));
+        }
+
+        // メッセージ処理
+        async function handleMessage(data) {
+            try {
+                if (typeof data === 'string') {
+                    const msg = JSON.parse(data);
+
+                    if (msg.setupComplete) {
+                        console.log('Setup complete');
+                        isConnected = true;
+                        updateStatus('connected', '接続済み');
+                        apiKeySection.classList.add('connected');
+                        connectBtn.textContent = '切断';
+                        recordBtn.disabled = false;
+                        return;
+                    }
+
+                    if (msg.serverContent) {
+                        const content = msg.serverContent;
+
+                        if (content.modelTurn && content.modelTurn.parts) {
+                            for (const part of content.modelTurn.parts) {
+                                if (part.inlineData && part.inlineData.mimeType.startsWith('audio/')) {
+                                    // 音声データを再生
+                                    const audioData = base64ToArrayBuffer(part.inlineData.data);
+                                    playAudio(audioData);
+                                    speakingIndicator.classList.add('active');
+                                }
+                                if (part.text) {
+                                    addMessage('ai', part.text);
+                                }
+                            }
+                        }
+
+                        if (content.turnComplete) {
+                            speakingIndicator.classList.remove('active');
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Message handling error:', error);
+            }
+        }
+
+        // 切断
+        function disconnect() {
+            if (websocket) {
+                websocket.close();
+                websocket = null;
+            }
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+            isConnected = false;
+            isRecording = false;
+            updateStatus('disconnected', '未接続');
+            apiKeySection.classList.remove('connected');
+            connectBtn.textContent = '接続';
+            recordBtn.disabled = true;
+            recordBtn.classList.remove('recording');
+            speakingIndicator.classList.remove('active');
+        }
+
+        // 録音ボタン
+        recordBtn.addEventListener('mousedown', startRecording);
+        recordBtn.addEventListener('mouseup', stopRecording);
+        recordBtn.addEventListener('mouseleave', stopRecording);
+        recordBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startRecording();
+        });
+        recordBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            stopRecording();
+        });
+
+        // 録音開始
+        async function startRecording() {
+            if (!isConnected || isRecording) return;
+
+            isRecording = true;
+            recordBtn.classList.add('recording');
+            statusDot.classList.add('recording');
+            statusDot.classList.remove('connected');
+            statusText.textContent = '録音中...';
+
+            // 音声処理
+            const source = audioContext.createMediaStreamSource(mediaStream);
+            const processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+            processor.onaudioprocess = (e) => {
+                if (!isRecording) return;
+
+                const inputData = e.inputBuffer.getChannelData(0);
+
+                // 16kHzにリサンプリング（audioContextが24kHzの場合）
+                const ratio = audioContext.sampleRate / 16000;
+                const outputLength = Math.floor(inputData.length / ratio);
+                const outputData = new Int16Array(outputLength);
+
+                for (let i = 0; i < outputLength; i++) {
+                    const index = Math.floor(i * ratio);
+                    outputData[i] = Math.max(-32768, Math.min(32767, inputData[index] * 32768));
+                }
+
+                // Base64エンコードして送信
+                const base64Audio = arrayBufferToBase64(outputData.buffer);
+                sendAudio(base64Audio);
+            };
+
+            source.connect(processor);
+            processor.connect(audioContext.destination);
+
+            // 後で切断するために保存
+            recordBtn._processor = processor;
+            recordBtn._source = source;
+        }
+
+        // 録音停止
+        function stopRecording() {
+            if (!isRecording) return;
+
+            isRecording = false;
+            recordBtn.classList.remove('recording');
+            statusDot.classList.remove('recording');
+            statusDot.classList.add('connected');
+            statusText.textContent = '接続済み';
+
+            // 音声処理を切断
+            if (recordBtn._processor) {
+                recordBtn._processor.disconnect();
+                recordBtn._processor = null;
+            }
+            if (recordBtn._source) {
+                recordBtn._source.disconnect();
+                recordBtn._source = null;
+            }
+
+            // 録音終了を通知
+            sendEndOfTurn();
+
+            addMessage('user', '(音声入力)');
+        }
+
+        // 音声データ送信
+        function sendAudio(base64Audio) {
+            if (!websocket || websocket.readyState !== WebSocket.OPEN) return;
+
+            const msg = {
+                realtimeInput: {
+                    mediaChunks: [{
+                        mimeType: "audio/pcm;rate=16000",
+                        data: base64Audio
+                    }]
+                }
+            };
+            websocket.send(JSON.stringify(msg));
+        }
+
+        // ターン終了送信
+        function sendEndOfTurn() {
+            if (!websocket || websocket.readyState !== WebSocket.OPEN) return;
+
+            const msg = {
+                clientContent: {
+                    turnComplete: true
+                }
+            };
+            websocket.send(JSON.stringify(msg));
+        }
+
+        // 音声再生
+        async function playAudio(pcmData) {
+            try {
+                // PCM 16bit → Float32
+                const int16Array = new Int16Array(pcmData);
+                const float32Array = new Float32Array(int16Array.length);
+                for (let i = 0; i < int16Array.length; i++) {
+                    float32Array[i] = int16Array[i] / 32768;
+                }
+
+                // AudioBuffer作成
+                const audioBuffer = audioContext.createBuffer(1, float32Array.length, 24000);
+                audioBuffer.getChannelData(0).set(float32Array);
+
+                // 再生
+                const source = audioContext.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(audioContext.destination);
+                source.start();
+            } catch (error) {
+                console.error('Audio playback error:', error);
+            }
+        }
+
+        // ユーティリティ関数
+        function base64ToArrayBuffer(base64) {
+            const binaryString = atob(base64);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        function arrayBufferToBase64(buffer) {
+            const bytes = new Uint8Array(buffer);
+            let binary = '';
+            for (let i = 0; i < bytes.byteLength; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return btoa(binary);
+        }
+
+        function updateStatus(status, text) {
+            statusText.textContent = text;
+            statusDot.className = 'status-dot';
+            if (status === 'connected') {
+                statusDot.classList.add('connected');
+            } else if (status === 'recording') {
+                statusDot.classList.add('recording');
+            }
+        }
+
+        function addMessage(type, text) {
+            // 空のチャットメッセージを削除
+            const emptyChat = chatArea.querySelector('.empty-chat');
+            if (emptyChat) {
+                emptyChat.remove();
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+
+            const label = document.createElement('div');
+            label.className = 'message-label';
+            label.textContent = type === 'user' ? 'あなた' : type === 'ai' ? 'AI' : 'システム';
+
+            const bubble = document.createElement('div');
+            bubble.className = 'message-bubble';
+            bubble.textContent = text;
+
+            messageDiv.appendChild(label);
+            messageDiv.appendChild(bubble);
+            chatArea.appendChild(messageDiv);
+
+            // スクロール
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+    </script>
+</body>
+</html>
