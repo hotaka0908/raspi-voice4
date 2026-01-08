@@ -1862,6 +1862,10 @@ class GeminiLiveClient:
                     "disabled": True
                 }
             },
+            # Thinkingを無効化（thinking_budget=0）
+            "thinking_config": {
+                "thinking_budget": 0
+            },
             # 入力音声の文字起こしを有効化（デバッグ用）
             "input_audio_transcription": {},
             "tools": get_gemini_tools(),
