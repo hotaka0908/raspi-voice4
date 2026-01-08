@@ -2131,6 +2131,11 @@ async def audio_input_loop(client: GeminiLiveClient, audio_handler: GeminiAudioH
         if CONFIG["use_button"] and button:
             if button.is_pressed:
                 if not is_recording:
+                    # セッションリセット中または未接続の場合は待機
+                    if client.needs_session_reset or not client.is_connected:
+                        await asyncio.sleep(0.1)
+                        continue
+
                     # タイムアウトチェック付きで voice_message_mode を確認
                     current_voice_mode = check_and_reset_voice_message_mode()
 
