@@ -14,8 +14,7 @@ Raspberry Pi 5 + Google Gemini Live API + Cloud Functions を使用したネッ�
 
 ### デモ動画
 
-<!-- TODO: YouTubeにアップロード後、URLを更新 -->
-https://youtu.be/YOUR_VIDEO_ID
+https://youtu.be/s2f3xGuAJEs
 
 ## Google Cloud 利用サービス
 

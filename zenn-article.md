@@ -27,8 +27,7 @@ published: false
 
 ### デモ動画
 
-<!-- TODO: 3分程度のデモ動画を撮影してYouTubeにアップロードし、URLを貼る -->
-https://youtu.be/YOUR_VIDEO_ID
+https://youtu.be/s2f3xGuAJEs
 
 ---
 
