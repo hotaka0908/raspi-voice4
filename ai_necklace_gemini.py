@@ -2064,10 +2064,8 @@ class GeminiLiveClient:
                 pass
             self.session_context = None
             self.session = None
+            self.is_connected = False
             print("Gemini Live API切断")
-        # 常に接続フラグをFalseに設定
-        self.is_connected = False
-        self.is_responding = False
 
     async def reset_session(self):
         """セッションをリセットして新しい会話を開始"""
@@ -2133,10 +2131,8 @@ async def audio_input_loop(client: GeminiLiveClient, audio_handler: GeminiAudioH
         if CONFIG["use_button"] and button:
             if button.is_pressed:
                 if not is_recording:
-                    # セッションリセット中、未接続、またはAI応答中の場合は待機
-                    if client.needs_session_reset or not client.is_connected or client.is_responding:
-                        if client.is_responding:
-                            print("待機中: AI応答中")
+                    # セッションリセット中または未接続の場合は待機
+                    if client.needs_session_reset or not client.is_connected:
                         await asyncio.sleep(0.1)
                         continue
 
