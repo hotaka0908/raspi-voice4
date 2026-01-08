@@ -28,6 +28,7 @@ Thumbs.db
 
 # Firebase config (contains secrets)
 docs/firebase-config.js
+docs/api-config.js
 
 # Temporary files
 /tmp/

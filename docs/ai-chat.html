@@ -47,81 +47,30 @@
             color: #888;
         }
 
-        /* API Key 設定 */
-        .api-key-section {
-            background: rgba(255,255,255,0.1);
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-
-        .api-key-section label {
-            display: block;
-            font-size: 0.85rem;
-            color: #aaa;
-            margin-bottom: 8px;
-        }
-
-        .api-key-input-wrapper {
-            display: flex;
-            gap: 10px;
-        }
-
-        .api-key-section input {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            background: rgba(255,255,255,0.1);
-            color: #fff;
-            font-size: 0.9rem;
-        }
-
-        .api-key-section input::placeholder {
-            color: #666;
-        }
-
-        .api-key-section button {
-            padding: 12px 20px;
-            border: none;
-            border-radius: 8px;
-            background: #4ade80;
-            color: #000;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .api-key-section button:hover {
-            background: #22c55e;
-        }
-
-        .api-key-section button:disabled {
-            background: #666;
-            cursor: not-allowed;
-        }
-
-        .api-key-section.connected {
-            background: rgba(74, 222, 128, 0.2);
-            border: 1px solid #4ade80;
-        }
-
         /* ステータス */
         .status {
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
-            padding: 10px;
-            font-size: 0.85rem;
+            padding: 15px;
+            font-size: 0.9rem;
             color: #888;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            margin-bottom: 20px;
         }
 
         .status-dot {
-            width: 8px;
-            height: 8px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
             background: #666;
+        }
+
+        .status-dot.connecting {
+            background: #ffc107;
+            animation: pulse 1s infinite;
         }
 
         .status-dot.connected {
@@ -131,7 +80,11 @@
 
         .status-dot.recording {
             background: #ef4444;
-            animation: pulse 1s infinite;
+            animation: pulse 0.5s infinite;
+        }
+
+        .status-dot.error {
+            background: #ef4444;
         }
 
         @keyframes pulse {
@@ -271,6 +224,7 @@
         .speaking-indicator {
             display: none;
             align-items: center;
+            justify-content: center;
             gap: 8px;
             padding: 10px 20px;
             background: rgba(74, 222, 128, 0.2);
@@ -317,6 +271,22 @@
             color: #4ade80;
             text-decoration: none;
         }
+
+        /* 再接続ボタン */
+        .reconnect-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            background: #4ade80;
+            color: #000;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .reconnect-btn:hover {
+            background: #22c55e;
+        }
     </style>
 </head>
 <body>
@@ -326,21 +296,13 @@
             <p>Gemini Live API Web Demo</p>
         </div>
 
-        <div class="api-key-section" id="apiKeySection">
-            <label>Gemini API Key</label>
-            <div class="api-key-input-wrapper">
-                <input type="password" id="apiKeyInput" placeholder="AIza...">
-                <button id="connectBtn">接続</button>
-            </div>
-        </div>
-
-        <div class="status">
+        <div class="status" id="statusSection">
             <span class="status-dot" id="statusDot"></span>
-            <span id="statusText">未接続</span>
+            <span id="statusText">接続準備中...</span>
         </div>
 
         <div class="chat-area" id="chatArea">
-            <div class="empty-chat">マイクボタンを押しながら話しかけてください</div>
+            <div class="empty-chat">接続後、マイクボタンを押しながら話しかけてください</div>
         </div>
 
         <div class="speaking-indicator" id="speakingIndicator">
@@ -362,11 +324,10 @@
         </div>
     </div>
 
-    <script type="module">
+    <script src="api-config.js"></script>
+    <script>
         // DOM要素
-        const apiKeyInput = document.getElementById('apiKeyInput');
-        const apiKeySection = document.getElementById('apiKeySection');
-        const connectBtn = document.getElementById('connectBtn');
+        const statusSection = document.getElementById('statusSection');
         const statusDot = document.getElementById('statusDot');
         const statusText = document.getElementById('statusText');
         const chatArea = document.getElementById('chatArea');
@@ -379,38 +340,23 @@
         let isRecording = false;
         let audioContext = null;
         let mediaStream = null;
-        let audioWorklet = null;
-        let audioQueue = [];
-        let isPlaying = false;
 
-        // 保存されたAPIキーを復元
-        const savedApiKey = localStorage.getItem('gemini_api_key');
-        if (savedApiKey) {
-            apiKeyInput.value = savedApiKey;
-        }
-
-        // 接続ボタン
-        connectBtn.addEventListener('click', async () => {
-            const apiKey = apiKeyInput.value.trim();
-            if (!apiKey) {
-                alert('APIキーを入力してください');
+        // ページ読み込み時に自動接続
+        window.addEventListener('load', async () => {
+            // APIキーチェック
+            if (typeof API_CONFIG === 'undefined' || !API_CONFIG.GEMINI_API_KEY || API_CONFIG.GEMINI_API_KEY === 'YOUR_API_KEY_HERE') {
+                updateStatus('error', 'APIキーが設定されていません');
+                addMessage('system', 'api-config.js にGemini APIキーを設定してください');
                 return;
             }
 
-            if (isConnected) {
-                disconnect();
-            } else {
-                await connect(apiKey);
-            }
+            await connect(API_CONFIG.GEMINI_API_KEY);
         });
 
         // 接続
         async function connect(apiKey) {
             try {
                 updateStatus('connecting', '接続中...');
-
-                // APIキーを保存
-                localStorage.setItem('gemini_api_key', apiKey);
 
                 // AudioContext初期化
                 audioContext = new (window.AudioContext || window.webkitAudioContext)({
@@ -442,19 +388,39 @@
 
                 websocket.onerror = (error) => {
                     console.error('WebSocket error:', error);
-                    updateStatus('disconnected', '接続エラー');
+                    updateStatus('error', '接続エラー');
+                    addReconnectButton();
                 };
 
                 websocket.onclose = () => {
                     console.log('WebSocket closed');
-                    disconnect();
+                    if (isConnected) {
+                        disconnect();
+                        addMessage('system', '接続が切断されました');
+                        addReconnectButton();
+                    }
                 };
 
             } catch (error) {
                 console.error('Connection error:', error);
-                alert('接続に失敗しました: ' + error.message);
-                updateStatus('disconnected', '接続失敗');
+                updateStatus('error', '接続失敗: ' + error.message);
+                addReconnectButton();
             }
+        }
+
+        // 再接続ボタン追加
+        function addReconnectButton() {
+            if (document.getElementById('reconnectBtn')) return;
+
+            const btn = document.createElement('button');
+            btn.id = 'reconnectBtn';
+            btn.className = 'reconnect-btn';
+            btn.textContent = '再接続';
+            btn.onclick = () => {
+                btn.remove();
+                connect(API_CONFIG.GEMINI_API_KEY);
+            };
+            statusSection.appendChild(btn);
         }
 
         // セットアップメッセージ送信
@@ -491,10 +457,14 @@
                     if (msg.setupComplete) {
                         console.log('Setup complete');
                         isConnected = true;
-                        updateStatus('connected', '接続済み');
-                        apiKeySection.classList.add('connected');
-                        connectBtn.textContent = '切断';
+                        updateStatus('connected', '接続済み - 話しかけてください');
                         recordBtn.disabled = false;
+
+                        // 空のチャットメッセージを更新
+                        const emptyChat = chatArea.querySelector('.empty-chat');
+                        if (emptyChat) {
+                            emptyChat.textContent = 'マイクボタンを押しながら話しかけてください';
+                        }
                         return;
                     }
 
@@ -542,8 +512,6 @@
             isConnected = false;
             isRecording = false;
             updateStatus('disconnected', '未接続');
-            apiKeySection.classList.remove('connected');
-            connectBtn.textContent = '接続';
             recordBtn.disabled = true;
             recordBtn.classList.remove('recording');
             speakingIndicator.classList.remove('active');
@@ -581,7 +549,7 @@
 
                 const inputData = e.inputBuffer.getChannelData(0);
 
-                // 16kHzにリサンプリング（audioContextが24kHzの場合）
+                // 16kHzにリサンプリング
                 const ratio = audioContext.sampleRate / 16000;
                 const outputLength = Math.floor(inputData.length / ratio);
                 const outputData = new Int16Array(outputLength);
@@ -703,10 +671,14 @@
         function updateStatus(status, text) {
             statusText.textContent = text;
             statusDot.className = 'status-dot';
-            if (status === 'connected') {
+            if (status === 'connecting') {
+                statusDot.classList.add('connecting');
+            } else if (status === 'connected') {
                 statusDot.classList.add('connected');
             } else if (status === 'recording') {
                 statusDot.classList.add('recording');
+            } else if (status === 'error') {
+                statusDot.classList.add('error');
             }
         }
 
