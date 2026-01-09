@@ -15,10 +15,88 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            background: radial-gradient(ellipse at bottom, #1b2838 0%, #090a0f 100%);
             min-height: 100vh;
             color: #fff;
-            overflow-x: hidden;
+            overflow: hidden;
+        }
+
+        /* 宇宙背景 */
+        .space-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .stars {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 200%;
+            height: 200%;
+            background: transparent;
+            animation: moveStars 100s linear infinite;
+        }
+
+        .stars-layer1 {
+            background-image:
+                radial-gradient(2px 2px at 20px 30px, #fff, transparent),
+                radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.8), transparent),
+                radial-gradient(1px 1px at 90px 40px, #fff, transparent),
+                radial-gradient(2px 2px at 160px 120px, rgba(255,255,255,0.9), transparent),
+                radial-gradient(1px 1px at 230px 80px, #fff, transparent),
+                radial-gradient(2px 2px at 300px 150px, rgba(255,255,255,0.7), transparent),
+                radial-gradient(1px 1px at 370px 200px, #fff, transparent),
+                radial-gradient(2px 2px at 450px 50px, rgba(255,255,255,0.8), transparent);
+            background-size: 500px 300px;
+            animation-duration: 80s;
+        }
+
+        .stars-layer2 {
+            background-image:
+                radial-gradient(1px 1px at 50px 100px, rgba(255,255,255,0.6), transparent),
+                radial-gradient(1px 1px at 150px 50px, rgba(255,255,255,0.5), transparent),
+                radial-gradient(1px 1px at 250px 180px, rgba(255,255,255,0.6), transparent),
+                radial-gradient(1px 1px at 350px 90px, rgba(255,255,255,0.4), transparent),
+                radial-gradient(1px 1px at 100px 200px, rgba(255,255,255,0.5), transparent),
+                radial-gradient(1px 1px at 200px 30px, rgba(255,255,255,0.6), transparent);
+            background-size: 400px 250px;
+            animation-duration: 120s;
+        }
+
+        .stars-layer3 {
+            background-image:
+                radial-gradient(3px 3px at 100px 150px, rgba(100,180,255,0.8), transparent),
+                radial-gradient(3px 3px at 400px 100px, rgba(255,180,100,0.7), transparent),
+                radial-gradient(2px 2px at 250px 250px, rgba(180,100,255,0.6), transparent);
+            background-size: 600px 400px;
+            animation-duration: 150s;
+        }
+
+        @keyframes moveStars {
+            from { transform: translateY(0) translateX(0); }
+            to { transform: translateY(-50%) translateX(-25%); }
+        }
+
+        /* 星雲エフェクト */
+        .nebula {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(ellipse at 20% 80%, rgba(120, 80, 200, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(80, 120, 200, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(60, 100, 180, 0.08) 0%, transparent 60%);
+            animation: nebulaPulse 15s ease-in-out infinite alternate;
+        }
+
+        @keyframes nebulaPulse {
+            from { opacity: 0.5; }
+            to { opacity: 1; }
         }
 
         .container {
@@ -53,80 +131,143 @@
         }
 
         .record-btn {
-            width: 120px;
-            height: 120px;
+            width: 150px;
+            height: 150px;
             border-radius: 50%;
-            border: 5px solid #4ade80;
+            border: none;
             background: transparent;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s;
             display: flex;
             align-items: center;
             justify-content: center;
             -webkit-tap-highlight-color: transparent;
+            position: relative;
         }
 
         .record-btn:disabled {
-            border-color: #666;
             cursor: not-allowed;
+            opacity: 0.4;
         }
 
+        /* 太陽本体 */
         .record-btn::before {
             content: '';
-            width: 60px;
-            height: 60px;
-            background: #4ade80;
+            width: 70px;
+            height: 70px;
             border-radius: 50%;
-            transition: all 0.2s;
+            background:
+                radial-gradient(circle at 30% 30%, rgba(255,255,255,0.6) 0%, transparent 20%),
+                radial-gradient(circle at 70% 25%, rgba(255,200,100,0.3) 0%, transparent 15%),
+                radial-gradient(circle at 25% 70%, rgba(255,180,50,0.3) 0%, transparent 20%),
+                radial-gradient(circle at 65% 65%, rgba(255,220,100,0.2) 0%, transparent 25%),
+                radial-gradient(circle at 50% 50%, #ffe8a0 0%, #ffcc44 25%, #ff9922 55%, #dd5500 85%, #aa3300 100%);
+            transition: all 0.3s;
             pointer-events: none;
+            box-shadow:
+                0 0 15px rgba(255, 180, 80, 0.6),
+                0 0 30px rgba(255, 140, 50, 0.4),
+                0 0 50px rgba(255, 100, 0, 0.2);
+            animation: sunGlow 3s ease-in-out infinite alternate, sunPulse 5s ease-in-out infinite;
+        }
+
+        @keyframes sunGlow {
+            from { box-shadow: 0 0 15px rgba(255, 180, 80, 0.6), 0 0 30px rgba(255, 140, 50, 0.4), 0 0 50px rgba(255, 100, 0, 0.2); }
+            to { box-shadow: 0 0 20px rgba(255, 200, 100, 0.7), 0 0 40px rgba(255, 160, 60, 0.5), 0 0 60px rgba(255, 120, 0, 0.3); }
+        }
+
+        @keyframes sunPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+        }
+
+        /* 地球の軌道と地球 */
+        .record-btn::after {
+            content: '';
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background:
+                radial-gradient(circle at 30% 30%, rgba(255,255,255,0.6) 0%, transparent 50%),
+                radial-gradient(ellipse at 55% 55%, #3a7a4d 0%, transparent 50%),
+                linear-gradient(135deg, #1a5276 0%, #2980b9 50%, #1a5276 100%);
+            box-shadow:
+                0 0 4px rgba(100, 180, 255, 0.8),
+                0 0 8px rgba(50, 150, 255, 0.4);
+            pointer-events: none;
+            animation: orbitEarth 20s linear infinite;
+        }
+
+        @keyframes orbitEarth {
+            from { transform: rotate(0deg) translateX(62px) rotate(0deg); }
+            to { transform: rotate(360deg) translateX(62px) rotate(-360deg); }
         }
 
         .record-btn:disabled::before {
-            background: #666;
+            filter: grayscale(0.8);
+            box-shadow: 0 0 10px rgba(100, 100, 100, 0.3);
+            animation: none;
         }
 
-        .record-btn.recording {
-            border-color: #ef4444;
-            animation: pulse-ring 1s infinite;
+        .record-btn:disabled::after {
+            animation: none;
+            opacity: 0.3;
         }
 
+        /* 録音中 - 太陽が少し赤みがかる */
         .record-btn.recording::before {
-            background: #ef4444;
-            border-radius: 12px;
-            width: 45px;
-            height: 45px;
+            background:
+                radial-gradient(circle at 30% 30%, rgba(255,255,255,0.6) 0%, transparent 20%),
+                radial-gradient(circle at 70% 25%, rgba(255,180,80,0.3) 0%, transparent 15%),
+                radial-gradient(circle at 25% 70%, rgba(255,150,50,0.3) 0%, transparent 20%),
+                radial-gradient(circle at 65% 65%, rgba(255,200,80,0.2) 0%, transparent 25%),
+                radial-gradient(circle at 50% 50%, #ffcc80 0%, #ff9933 25%, #ff6622 55%, #cc4400 85%, #993300 100%);
+            box-shadow:
+                0 0 20px rgba(255, 150, 80, 0.7),
+                0 0 40px rgba(255, 100, 50, 0.5),
+                0 0 60px rgba(255, 80, 0, 0.3);
+            animation: sunRecording 1s ease-in-out infinite alternate;
         }
 
-        @keyframes pulse-ring {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            100% { box-shadow: 0 0 0 30px rgba(239, 68, 68, 0); }
+        .record-btn.recording::after {
+            box-shadow:
+                0 0 6px rgba(255, 180, 150, 0.8),
+                0 0 12px rgba(255, 150, 100, 0.4);
         }
 
-        /* メッセージ送信モード */
-        .record-btn.voice-send-mode {
-            border-color: #60a5fa;
+        @keyframes sunRecording {
+            from { box-shadow: 0 0 20px rgba(255, 150, 80, 0.7), 0 0 40px rgba(255, 100, 50, 0.5), 0 0 60px rgba(255, 80, 0, 0.3); }
+            to { box-shadow: 0 0 25px rgba(255, 160, 90, 0.8), 0 0 50px rgba(255, 120, 60, 0.6), 0 0 70px rgba(255, 90, 20, 0.4); }
         }
 
+        /* メッセージ送信モード - 青白く光る */
         .record-btn.voice-send-mode::before {
-            background: #60a5fa;
-        }
-
-        .record-btn.voice-send-mode.recording {
-            border-color: #ef4444;
+            background:
+                radial-gradient(circle at 35% 35%, #fff 0%, transparent 30%),
+                radial-gradient(circle at 50% 50%, #aaddff 0%, #66bbff 50%, #3399ff 100%);
+            box-shadow:
+                0 0 40px rgba(100, 200, 255, 0.9),
+                0 0 80px rgba(50, 150, 255, 0.6),
+                0 0 120px rgba(0, 100, 200, 0.4);
         }
 
         .record-btn.voice-send-mode.recording::before {
-            background: #ef4444;
+            background:
+                radial-gradient(circle at 35% 35%, #fff 0%, transparent 30%),
+                radial-gradient(circle at 50% 50%, #ff6666 0%, #ff3333 50%, #cc0000 100%);
         }
 
         .hint {
             font-size: 1rem;
-            color: #888;
+            color: rgba(180, 180, 220, 0.8);
             transition: color 0.3s;
+            text-shadow: 0 0 10px rgba(147, 130, 255, 0.3);
         }
 
         .hint.voice-send-mode {
-            color: #60a5fa;
+            color: rgba(100, 200, 255, 0.9);
+            text-shadow: 0 0 10px rgba(100, 200, 255, 0.4);
         }
 
         .info-panel {
@@ -394,24 +535,43 @@
             cursor: pointer;
         }
 
-        /* スマホからのメッセージ表示 */
+        /* スマホからのメッセージ表示 - 宇宙風 */
         .phone-message-text {
             position: fixed;
             top: 30%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(96, 165, 250, 0.95);
+            background:
+                radial-gradient(ellipse at 20% 20%, rgba(100, 150, 255, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(150, 100, 255, 0.1) 0%, transparent 50%),
+                linear-gradient(135deg, rgba(20, 25, 45, 0.95) 0%, rgba(30, 40, 70, 0.95) 50%, rgba(20, 30, 50, 0.95) 100%);
             color: #fff;
-            padding: 20px 25px;
-            border-radius: 16px;
+            padding: 25px 30px;
+            border-radius: 20px;
             max-width: 85%;
             display: none;
             flex-direction: column;
             align-items: center;
-            gap: 12px;
+            gap: 15px;
             z-index: 150;
-            animation: fadeIn 0.3s ease;
             text-align: center;
+            border: 1px solid rgba(100, 150, 255, 0.3);
+            box-shadow:
+                0 0 20px rgba(100, 150, 255, 0.2),
+                0 0 40px rgba(80, 100, 200, 0.1),
+                inset 0 0 30px rgba(100, 150, 255, 0.05);
+            animation: messageAppear 0.5s ease-out;
+        }
+
+        @keyframes messageAppear {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
         }
 
         .phone-message-text.show {
@@ -420,12 +580,16 @@
 
         .phone-message-text .label {
             font-size: 0.75rem;
-            opacity: 0.8;
+            color: rgba(150, 200, 255, 0.8);
+            text-transform: uppercase;
+            letter-spacing: 2px;
         }
 
         .phone-message-text .text {
             font-size: 1.1rem;
-            line-height: 1.5;
+            line-height: 1.6;
+            color: rgba(220, 230, 255, 0.95);
+            text-shadow: 0 0 10px rgba(100, 150, 255, 0.3);
         }
 
         .phone-message-text .processing {
@@ -435,6 +599,14 @@
     </style>
 </head>
 <body>
+    <!-- 宇宙背景 -->
+    <div class="space-bg">
+        <div class="nebula"></div>
+        <div class="stars stars-layer1"></div>
+        <div class="stars stars-layer2"></div>
+        <div class="stars stars-layer3"></div>
+    </div>
+
     <!-- QRコードモーダル -->
     <div class="qr-modal" id="qrModal">
         <h2>スマホでQRコードを読み取ってください</h2>
@@ -467,7 +639,6 @@
 
     <!-- スマホからのメッセージ -->
     <div class="phone-message-text" id="phoneMessageText">
-        <div class="label">スマホからのメッセージ</div>
         <div class="text" id="phoneMessageContent"></div>
     </div>
 
