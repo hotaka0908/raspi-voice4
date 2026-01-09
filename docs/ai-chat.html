@@ -343,6 +343,9 @@
 
         // ページ読み込み時に自動接続
         window.addEventListener('load', async () => {
+            console.log('Page loaded, checking API config...');
+            console.log('API_CONFIG:', typeof API_CONFIG !== 'undefined' ? 'defined' : 'undefined');
+
             // APIキーチェック
             if (typeof API_CONFIG === 'undefined' || !API_CONFIG.GEMINI_API_KEY || API_CONFIG.GEMINI_API_KEY === 'YOUR_API_KEY_HERE') {
                 updateStatus('error', 'APIキーが設定されていません');
@@ -350,6 +353,7 @@
                 return;
             }
 
+            console.log('API key found, connecting...');
             await connect(API_CONFIG.GEMINI_API_KEY);
         });
 
@@ -374,15 +378,16 @@
                 });
 
                 // WebSocket接続
-                const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`;
+                const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`;
                 websocket = new WebSocket(wsUrl);
 
                 websocket.onopen = () => {
-                    console.log('WebSocket connected');
+                    console.log('WebSocket connected, sending setup...');
                     sendSetup();
                 };
 
                 websocket.onmessage = (event) => {
+                    console.log('WebSocket message received:', event.data.substring ? event.data.substring(0, 200) : event.data);
                     handleMessage(event.data);
                 };
 
@@ -392,11 +397,14 @@
                     addReconnectButton();
                 };
 
-                websocket.onclose = () => {
-                    console.log('WebSocket closed');
+                websocket.onclose = (event) => {
+                    console.log('WebSocket closed:', event.code, event.reason);
                     if (isConnected) {
                         disconnect();
                         addMessage('system', '接続が切断されました');
+                        addReconnectButton();
+                    } else {
+                        updateStatus('error', '接続に失敗しました');
                         addReconnectButton();
                     }
                 };
@@ -427,18 +435,23 @@
         function sendSetup() {
             const setup = {
                 setup: {
-                    model: "models/gemini-2.0-flash-live-001",
-                    generation_config: {
-                        response_modalities: ["AUDIO"],
-                        speech_config: {
-                            voice_config: {
-                                prebuilt_voice_config: {
-                                    voice_name: "Kore"
+                    model: "models/gemini-2.5-flash-native-audio-preview-12-2025",
+                    generationConfig: {
+                        responseModalities: ["AUDIO"],
+                        speechConfig: {
+                            voiceConfig: {
+                                prebuiltVoiceConfig: {
+                                    voiceName: "Kore"
                                 }
                             }
                         }
                     },
-                    system_instruction: {
+                    realtimeInputConfig: {
+                        automaticActivityDetection: {
+                            disabled: true
+                        }
+                    },
+                    systemInstruction: {
                         parts: [{
                             text: "あなたは親切なAIアシスタントです。日本語で簡潔に回答してください。音声での会話なので、1-2文程度の短い応答を心がけてください。"
                         }]
@@ -446,13 +459,25 @@
                 }
             };
             websocket.send(JSON.stringify(setup));
+            console.log('Setup sent:', setup);
         }
 
         // メッセージ処理
         async function handleMessage(data) {
             try {
-                if (typeof data === 'string') {
-                    const msg = JSON.parse(data);
+                let jsonData;
+
+                // Blobの場合はテキストに変換
+                if (data instanceof Blob) {
+                    const text = await data.text();
+                    console.log('Blob converted to text:', text.substring(0, 200));
+                    jsonData = text;
+                } else {
+                    jsonData = data;
+                }
+
+                if (typeof jsonData === 'string') {
+                    const msg = JSON.parse(jsonData);
 
                     if (msg.setupComplete) {
                         console.log('Setup complete');
@@ -474,19 +499,26 @@
                         if (content.modelTurn && content.modelTurn.parts) {
                             for (const part of content.modelTurn.parts) {
                                 if (part.inlineData && part.inlineData.mimeType.startsWith('audio/')) {
-                                    // 音声データを再生
+                                    // 音声データをバッファに追加
                                     const audioData = base64ToArrayBuffer(part.inlineData.data);
-                                    playAudio(audioData);
-                                    speakingIndicator.classList.add('active');
+                                    queueAudio(audioData);
                                 }
                                 if (part.text) {
-                                    addMessage('ai', part.text);
+                                    // 内部思考テキストは非表示（**で始まるものなど）
+                                    if (!part.text.startsWith('**') && !part.text.includes('Responding')) {
+                                        addMessage('ai', part.text);
+                                    }
                                 }
                             }
                         }
 
                         if (content.turnComplete) {
-                            speakingIndicator.classList.remove('active');
+                            console.log('Turn complete');
+                            onTurnComplete();
+                        }
+
+                        if (content.generationComplete) {
+                            console.log('Generation complete');
                         }
                     }
                 }
@@ -540,9 +572,24 @@
             statusDot.classList.remove('connected');
             statusText.textContent = '録音中...';
 
+            // AudioContextがサスペンド状態なら再開
+            if (audioContext.state === 'suspended') {
+                await audioContext.resume();
+                console.log('AudioContext resumed');
+            }
+
+            // 音声活動開始を通知
+            console.log('About to call sendActivityStart');
+            sendActivityStart();
+            audioChunkCount = 0;
+
+            // 録音用の新しいAudioContextを作成（ネイティブサンプルレートを使用）
+            const recordingContext = new (window.AudioContext || window.webkitAudioContext)();
+            console.log('Recording context sample rate:', recordingContext.sampleRate);
+
             // 音声処理
-            const source = audioContext.createMediaStreamSource(mediaStream);
-            const processor = audioContext.createScriptProcessor(4096, 1, 1);
+            const source = recordingContext.createMediaStreamSource(mediaStream);
+            const processor = recordingContext.createScriptProcessor(4096, 1, 1);
 
             processor.onaudioprocess = (e) => {
                 if (!isRecording) return;
@@ -550,7 +597,7 @@
                 const inputData = e.inputBuffer.getChannelData(0);
 
                 // 16kHzにリサンプリング
-                const ratio = audioContext.sampleRate / 16000;
+                const ratio = recordingContext.sampleRate / 16000;
                 const outputLength = Math.floor(inputData.length / ratio);
                 const outputData = new Int16Array(outputLength);
 
@@ -565,11 +612,12 @@
             };
 
             source.connect(processor);
-            processor.connect(audioContext.destination);
+            processor.connect(recordingContext.destination);
 
             // 後で切断するために保存
             recordBtn._processor = processor;
             recordBtn._source = source;
+            recordBtn._recordingContext = recordingContext;
         }
 
         // 録音停止
@@ -591,43 +639,96 @@
                 recordBtn._source.disconnect();
                 recordBtn._source = null;
             }
+            if (recordBtn._recordingContext) {
+                recordBtn._recordingContext.close();
+                recordBtn._recordingContext = null;
+            }
 
-            // 録音終了を通知
-            sendEndOfTurn();
+            console.log(`Recording stopped. Total chunks sent: ${audioChunkCount}`);
 
-            addMessage('user', '(音声入力)');
+            // 音声活動終了を通知
+            if (audioChunkCount > 0) {
+                sendActivityEnd();
+                addMessage('user', '(音声入力)');
+            } else {
+                addMessage('system', '音声が検出されませんでした。もう一度お試しください。');
+            }
         }
 
-        // 音声データ送信
-        function sendAudio(base64Audio) {
-            if (!websocket || websocket.readyState !== WebSocket.OPEN) return;
+        // 音声活動開始を通知
+        function sendActivityStart() {
+            console.log('sendActivityStart called, websocket:', websocket ? 'exists' : 'null', 'readyState:', websocket?.readyState);
+            if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+                console.log('sendActivityStart: websocket not ready, skipping');
+                return;
+            }
 
             const msg = {
                 realtimeInput: {
-                    mediaChunks: [{
-                        mimeType: "audio/pcm;rate=16000",
-                        data: base64Audio
-                    }]
+                    activityStart: {}
                 }
             };
             websocket.send(JSON.stringify(msg));
+            console.log('Activity start sent');
         }
 
-        // ターン終了送信
-        function sendEndOfTurn() {
-            if (!websocket || websocket.readyState !== WebSocket.OPEN) return;
+        // 音声活動終了を通知
+        function sendActivityEnd() {
+            console.log('sendActivityEnd called, websocket:', websocket ? 'exists' : 'null', 'readyState:', websocket?.readyState);
+            if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+                console.log('sendActivityEnd: websocket not ready, skipping');
+                return;
+            }
 
             const msg = {
-                clientContent: {
-                    turnComplete: true
+                realtimeInput: {
+                    activityEnd: {}
+                }
+            };
+            websocket.send(JSON.stringify(msg));
+            console.log('Activity end sent');
+        }
+
+        // 音声データ送信
+        let audioChunkCount = 0;
+        function sendAudio(base64Audio) {
+            if (!websocket || websocket.readyState !== WebSocket.OPEN) return;
+
+            audioChunkCount++;
+            if (audioChunkCount === 1 || audioChunkCount % 10 === 0) {
+                console.log(`Audio chunk #${audioChunkCount} sent, size: ${base64Audio.length} chars`);
+            }
+
+            const msg = {
+                realtimeInput: {
+                    audio: {
+                        mimeType: "audio/pcm;rate=16000",
+                        data: base64Audio
+                    }
                 }
             };
             websocket.send(JSON.stringify(msg));
         }
 
-        // 音声再生
-        async function playAudio(pcmData) {
+        // ストリーミング音声再生
+        let playbackContext = null;
+        let nextPlayTime = 0;
+
+        // 音声をストリーミング再生
+        async function queueAudio(pcmData) {
             try {
+                // 再生用AudioContextを作成
+                if (!playbackContext || playbackContext.state === 'closed') {
+                    playbackContext = new (window.AudioContext || window.webkitAudioContext)({
+                        sampleRate: 24000
+                    });
+                    nextPlayTime = 0;
+                }
+
+                if (playbackContext.state === 'suspended') {
+                    await playbackContext.resume();
+                }
+
                 // PCM 16bit → Float32
                 const int16Array = new Int16Array(pcmData);
                 const float32Array = new Float32Array(int16Array.length);
@@ -636,17 +737,37 @@
                 }
 
                 // AudioBuffer作成
-                const audioBuffer = audioContext.createBuffer(1, float32Array.length, 24000);
+                const audioBuffer = playbackContext.createBuffer(1, float32Array.length, 24000);
                 audioBuffer.getChannelData(0).set(float32Array);
 
-                // 再生
-                const source = audioContext.createBufferSource();
+                // 正確なタイミングでスケジュール再生
+                const source = playbackContext.createBufferSource();
                 source.buffer = audioBuffer;
-                source.connect(audioContext.destination);
-                source.start();
+                source.connect(playbackContext.destination);
+
+                const currentTime = playbackContext.currentTime;
+                const startTime = Math.max(currentTime, nextPlayTime);
+                source.start(startTime);
+                nextPlayTime = startTime + audioBuffer.duration;
+
+                speakingIndicator.classList.add('active');
             } catch (error) {
                 console.error('Audio playback error:', error);
             }
+        }
+
+        // ターン終了時の処理
+        function onTurnComplete() {
+            // 最後の音声が終わった後にインジケーターを消す
+            if (playbackContext && nextPlayTime > 0) {
+                const delay = (nextPlayTime - playbackContext.currentTime) * 1000;
+                setTimeout(() => {
+                    speakingIndicator.classList.remove('active');
+                }, Math.max(0, delay));
+            } else {
+                speakingIndicator.classList.remove('active');
+            }
+            nextPlayTime = 0;
         }
 
         // ユーティリティ関数
