@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>AI Chat - Phone</title>
+    <title>AIボイスチャット</title>
     <style>
         * {
             margin: 0;
@@ -20,10 +20,70 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            background: radial-gradient(ellipse at bottom, #1b2838 0%, #090a0f 100%);
             color: #fff;
             position: fixed;
             width: 100%;
+        }
+
+        /* 宇宙背景 */
+        .space-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .stars {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 200%;
+            height: 200%;
+            background: transparent;
+            animation: moveStars 100s linear infinite;
+        }
+
+        .stars-layer1 {
+            background-image:
+                radial-gradient(2px 2px at 20px 30px, #fff, transparent),
+                radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.8), transparent),
+                radial-gradient(1px 1px at 90px 40px, #fff, transparent),
+                radial-gradient(2px 2px at 160px 120px, rgba(255,255,255,0.9), transparent);
+            background-size: 200px 150px;
+            animation-duration: 80s;
+        }
+
+        .stars-layer2 {
+            background-image:
+                radial-gradient(1px 1px at 50px 100px, rgba(255,255,255,0.6), transparent),
+                radial-gradient(1px 1px at 150px 50px, rgba(255,255,255,0.5), transparent),
+                radial-gradient(1px 1px at 100px 80px, rgba(255,255,255,0.6), transparent);
+            background-size: 180px 120px;
+            animation-duration: 120s;
+        }
+
+        @keyframes moveStars {
+            from { transform: translateY(0) translateX(0); }
+            to { transform: translateY(-50%) translateX(-25%); }
+        }
+
+        .nebula {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(ellipse at 20% 80%, rgba(120, 80, 200, 0.12) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(80, 120, 200, 0.08) 0%, transparent 50%);
+            animation: nebulaPulse 15s ease-in-out infinite alternate;
+        }
+
+        @keyframes nebulaPulse {
+            from { opacity: 0.5; }
+            to { opacity: 1; }
         }
 
         .container {
@@ -33,6 +93,8 @@
             padding: 15px;
             padding-top: env(safe-area-inset-top, 15px);
             padding-bottom: env(safe-area-inset-bottom, 15px);
+            position: relative;
+            z-index: 1;
         }
 
         .header {
@@ -44,12 +106,13 @@
         .header h1 {
             font-size: 1.2rem;
             margin-bottom: 8px;
-            color: #4ade80;
+            color: rgba(150, 200, 255, 0.9);
+            text-shadow: 0 0 10px rgba(100, 150, 255, 0.3);
         }
 
         .header p {
             font-size: 0.85rem;
-            color: #888;
+            color: rgba(180, 180, 220, 0.7);
         }
 
         .status {
@@ -59,7 +122,7 @@
             gap: 8px;
             padding: 10px;
             font-size: 0.85rem;
-            color: #888;
+            color: rgba(180, 180, 220, 0.7);
             flex-shrink: 0;
         }
 
@@ -67,21 +130,25 @@
             width: 8px;
             height: 8px;
             border-radius: 50%;
-            background: #4ade80;
+            background: rgba(100, 200, 255, 0.8);
+            box-shadow: 0 0 8px rgba(100, 200, 255, 0.6);
             animation: pulse 2s infinite;
         }
 
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
+            0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(100, 200, 255, 0.6); }
+            50% { opacity: 0.4; box-shadow: 0 0 4px rgba(100, 200, 255, 0.3); }
         }
 
         .messages {
             flex: 1;
             overflow-y: auto;
             padding: 10px;
-            background: rgba(255,255,255,0.03);
-            border-radius: 12px;
+            background:
+                radial-gradient(ellipse at 30% 30%, rgba(100, 150, 255, 0.05) 0%, transparent 50%),
+                rgba(10, 15, 30, 0.5);
+            border-radius: 16px;
+            border: 1px solid rgba(100, 150, 255, 0.15);
             -webkit-overflow-scrolling: touch;
         }
 
@@ -95,8 +162,10 @@
 
         .message .label {
             font-size: 0.7rem;
-            color: #888;
+            color: rgba(150, 200, 255, 0.6);
             margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .message .bubble {
@@ -106,9 +175,13 @@
             border-radius: 18px;
             font-size: 0.95rem;
             cursor: pointer;
-            transition: opacity 0.2s;
-            background: rgba(255,255,255,0.1);
+            transition: all 0.2s;
+            background:
+                linear-gradient(135deg, rgba(40, 60, 100, 0.8) 0%, rgba(30, 50, 80, 0.8) 100%);
+            border: 1px solid rgba(100, 150, 255, 0.2);
             border-bottom-left-radius: 4px;
+            color: rgba(220, 230, 255, 0.95);
+            box-shadow: 0 0 10px rgba(100, 150, 255, 0.1);
         }
 
         .message .bubble:active {
@@ -117,22 +190,23 @@
 
         .message .bubble.playing {
             animation: playing 0.5s infinite alternate;
+            box-shadow: 0 0 15px rgba(100, 200, 255, 0.3);
         }
 
         @keyframes playing {
             from { opacity: 1; }
-            to { opacity: 0.5; }
+            to { opacity: 0.6; }
         }
 
         .message .time {
             font-size: 0.65rem;
-            color: #666;
+            color: rgba(150, 180, 220, 0.5);
             margin-top: 4px;
         }
 
         .empty-messages {
             text-align: center;
-            color: #666;
+            color: rgba(150, 180, 220, 0.5);
             padding: 40px 20px;
             font-size: 0.9rem;
         }
@@ -147,51 +221,81 @@
             gap: 15px;
         }
 
+        /* 太陽ボタン（小型版） */
         .record-btn {
-            width: 70px;
-            height: 70px;
+            width: 100px;
+            height: 100px;
             border-radius: 50%;
-            border: 4px solid #4ade80;
+            border: none;
             background: transparent;
             cursor: pointer;
             position: relative;
-            transition: all 0.2s;
+            transition: all 0.3s;
             -webkit-tap-highlight-color: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .record-btn::before {
             content: '';
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 35px;
-            height: 35px;
-            background: #4ade80;
+            width: 45px;
+            height: 45px;
             border-radius: 50%;
-            transition: all 0.2s;
+            background:
+                radial-gradient(circle at 30% 30%, rgba(255,255,255,0.6) 0%, transparent 20%),
+                radial-gradient(circle at 50% 50%, #ffe8a0 0%, #ffcc44 25%, #ff9922 55%, #dd5500 85%, #aa3300 100%);
+            box-shadow:
+                0 0 15px rgba(255, 180, 80, 0.6),
+                0 0 30px rgba(255, 140, 50, 0.4);
+            transition: all 0.3s;
+            animation: sunGlow 3s ease-in-out infinite alternate;
         }
 
-        .record-btn.recording {
-            border-color: #ef4444;
-            animation: pulse-ring 1s infinite;
+        /* 地球 */
+        .record-btn::after {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background:
+                radial-gradient(circle at 30% 30%, rgba(255,255,255,0.6) 0%, transparent 50%),
+                linear-gradient(135deg, #1a5276 0%, #2980b9 50%, #1a5276 100%);
+            box-shadow: 0 0 4px rgba(100, 180, 255, 0.8);
+            animation: orbitEarth 20s linear infinite;
+        }
+
+        @keyframes sunGlow {
+            from { box-shadow: 0 0 15px rgba(255, 180, 80, 0.6), 0 0 30px rgba(255, 140, 50, 0.4); }
+            to { box-shadow: 0 0 20px rgba(255, 200, 100, 0.7), 0 0 40px rgba(255, 160, 60, 0.5); }
+        }
+
+        @keyframes orbitEarth {
+            from { transform: rotate(0deg) translateX(40px) rotate(0deg); }
+            to { transform: rotate(360deg) translateX(40px) rotate(-360deg); }
         }
 
         .record-btn.recording::before {
-            background: #ef4444;
-            border-radius: 8px;
-            width: 26px;
-            height: 26px;
+            background:
+                radial-gradient(circle at 30% 30%, rgba(255,255,255,0.6) 0%, transparent 20%),
+                radial-gradient(circle at 50% 50%, #ffcc80 0%, #ff9933 25%, #ff6622 55%, #cc4400 85%, #993300 100%);
+            box-shadow:
+                0 0 20px rgba(255, 150, 80, 0.7),
+                0 0 40px rgba(255, 100, 50, 0.5);
+            animation: sunRecording 1s ease-in-out infinite alternate;
         }
 
-        @keyframes pulse-ring {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            100% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+        @keyframes sunRecording {
+            from { box-shadow: 0 0 20px rgba(255, 150, 80, 0.7), 0 0 40px rgba(255, 100, 50, 0.5); }
+            to { box-shadow: 0 0 25px rgba(255, 160, 90, 0.8), 0 0 50px rgba(255, 120, 60, 0.6); }
         }
 
         .record-hint {
-            color: #888;
+            color: rgba(180, 180, 220, 0.7);
             font-size: 0.85rem;
+            text-shadow: 0 0 5px rgba(100, 150, 255, 0.2);
         }
 
         .message.sent {
@@ -199,10 +303,13 @@
         }
 
         .message.sent .bubble {
-            background: #4ade80;
-            color: #000;
+            background:
+                linear-gradient(135deg, rgba(255, 180, 80, 0.3) 0%, rgba(255, 140, 50, 0.3) 100%);
+            border: 1px solid rgba(255, 180, 100, 0.3);
+            color: rgba(255, 240, 220, 0.95);
             border-bottom-left-radius: 18px;
             border-bottom-right-radius: 4px;
+            box-shadow: 0 0 10px rgba(255, 180, 100, 0.15);
         }
 
         .error-screen {
@@ -222,11 +329,12 @@
         .error-screen h2 {
             font-size: 1.3rem;
             margin-bottom: 15px;
-            color: #ef4444;
+            color: rgba(255, 150, 150, 0.9);
+            text-shadow: 0 0 10px rgba(255, 100, 100, 0.3);
         }
 
         .error-screen p {
-            color: #888;
+            color: rgba(180, 180, 220, 0.7);
         }
 
         .main-content {
@@ -241,6 +349,13 @@
     </style>
 </head>
 <body>
+    <!-- 宇宙背景 -->
+    <div class="space-bg">
+        <div class="nebula"></div>
+        <div class="stars stars-layer1"></div>
+        <div class="stars stars-layer2"></div>
+    </div>
+
     <div class="container">
         <div class="error-screen" id="errorScreen">
             <h2>ルームIDがありません</h2>
@@ -249,13 +364,11 @@
 
         <div class="main-content hidden" id="mainContent">
             <div class="header">
-                <h1>AI Chat - メッセージ受信</h1>
-                <p>PCから送信されたメッセージが表示されます</p>
-            </div>
-
-            <div class="status">
-                <span class="status-dot"></span>
-                <span>接続中</span>
+                <h1>AIボイスチャット</h1>
+                <div class="status">
+                    <span class="status-dot"></span>
+                    <span>接続中</span>
+                </div>
             </div>
 
             <div class="messages" id="messages">
@@ -264,7 +377,6 @@
 
             <div class="record-bar">
                 <button class="record-btn" id="recordBtn"></button>
-                <span class="record-hint">押しながら話す</span>
             </div>
         </div>
     </div>
@@ -425,8 +537,8 @@
             }
         }
 
-        // 送信したメッセージをUIに追加
-        function addSentMessageToUI(msg) {
+        // 送信したメッセージをUIに追加（STT付き）
+        async function addSentMessageToUI(msg) {
             const emptyMsg = messagesEl.querySelector('.empty-messages');
             if (emptyMsg) emptyMsg.remove();
 
@@ -437,15 +549,29 @@
 
             div.innerHTML = `
                 <div class="label">あなた</div>
-                <div class="bubble" data-url="${msg.audio_url}">音声メッセージ (タップで再生)</div>
+                <div class="bubble" data-url="${msg.audio_url}">処理中...</div>
                 <div class="time">${time}</div>
             `;
 
-            const bubble = div.querySelector('.bubble');
-            bubble.addEventListener('click', () => playAudio(bubble, msg.audio_url));
-
             messagesEl.appendChild(div);
             messagesEl.scrollTop = messagesEl.scrollHeight;
+
+            const bubble = div.querySelector('.bubble');
+
+            // STTで文字起こし
+            try {
+                if (msg.audio_base64) {
+                    const transcribedText = await transcribeAudio(msg.audio_base64);
+                    bubble.textContent = transcribedText || '(音声メッセージ)';
+                } else {
+                    bubble.textContent = '(音声メッセージ)';
+                }
+            } catch (err) {
+                console.error('STT error:', err);
+                bubble.textContent = '(音声メッセージ)';
+            }
+
+            bubble.addEventListener('click', () => playAudio(bubble, msg.audio_url));
         }
 
         // メッセージをポーリング
