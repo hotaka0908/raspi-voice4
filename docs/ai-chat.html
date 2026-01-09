@@ -18,16 +18,38 @@
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             min-height: 100vh;
             color: #fff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            overflow-x: hidden;
         }
 
         .container {
             display: flex;
             flex-direction: column;
             align-items: center;
+        }
+
+        .button-area {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             gap: 20px;
+            z-index: 100;
+        }
+
+        .display-area {
+            position: fixed;
+            top: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 320px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
         }
 
         .record-btn {
@@ -56,6 +78,7 @@
             background: #4ade80;
             border-radius: 50%;
             transition: all 0.2s;
+            pointer-events: none;
         }
 
         .record-btn:disabled::before {
@@ -79,29 +102,38 @@
             100% { box-shadow: 0 0 0 30px rgba(239, 68, 68, 0); }
         }
 
+        /* メッセージ送信モード */
+        .record-btn.voice-send-mode {
+            border-color: #60a5fa;
+        }
+
+        .record-btn.voice-send-mode::before {
+            background: #60a5fa;
+        }
+
+        .record-btn.voice-send-mode.recording {
+            border-color: #ef4444;
+        }
+
+        .record-btn.voice-send-mode.recording::before {
+            background: #ef4444;
+        }
+
         .hint {
             font-size: 1rem;
             color: #888;
+            transition: color 0.3s;
         }
 
-        .status-text {
-            margin-top: 20px;
-            font-size: 0.9rem;
-            color: #666;
-            text-align: center;
-            min-height: 24px;
-        }
-
-        .status-text.active {
-            color: #4ade80;
+        .hint.voice-send-mode {
+            color: #60a5fa;
         }
 
         .info-panel {
-            margin-top: 30px;
             padding: 20px;
             background: rgba(255,255,255,0.05);
             border-radius: 12px;
-            max-width: 300px;
+            width: 100%;
             display: none;
             animation: fadeIn 0.3s ease;
         }
@@ -149,22 +181,490 @@
             line-height: 1.5;
             text-align: center;
         }
+
+        .toast {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(74, 222, 128, 0.9);
+            color: #000;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 100;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
+        .time-display {
+            font-size: 2rem;
+            color: #4ade80;
+            font-weight: bold;
+            text-align: center;
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .time-display.show {
+            display: block;
+        }
+
+        .action-result {
+            padding: 15px;
+            background: rgba(74, 222, 128, 0.1);
+            border: 1px solid rgba(74, 222, 128, 0.3);
+            border-radius: 8px;
+            width: 100%;
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .action-result.show {
+            display: block;
+        }
+
+        .action-result h4 {
+            color: #4ade80;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+        }
+
+        .action-result p {
+            color: #aaa;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+        /* カメラ関連 */
+        .camera-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 200;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .camera-container.show {
+            display: flex;
+        }
+
+        .camera-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .camera-countdown {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 5rem;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(0,0,0,0.8);
+            animation: countdownPulse 1s ease;
+        }
+
+        @keyframes countdownPulse {
+            0% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+
+        .camera-flash {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #fff;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .camera-flash.flash {
+            animation: flashEffect 0.3s ease;
+        }
+
+        @keyframes flashEffect {
+            0% { opacity: 0.8; }
+            100% { opacity: 0; }
+        }
+
+        .captured-image {
+            position: fixed;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 80%;
+            max-height: 50%;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 50;
+            pointer-events: none;
+        }
+
+        .captured-image.show {
+            opacity: 1;
+        }
+
+        .camera-status {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(74, 222, 128, 0.9);
+            color: #000;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            display: none;
+            z-index: 300;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .camera-status.show {
+            display: block;
+        }
+
+        /* QRコードモーダル */
+        .qr-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 500;
+        }
+
+        .qr-modal.show {
+            display: flex;
+        }
+
+        .qr-modal h2 {
+            color: #4ade80;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .qr-modal p {
+            color: #aaa;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 0.85rem;
+            padding: 0 20px;
+        }
+
+        .qr-modal .qr-code {
+            background: #fff;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .qr-modal .qr-code img {
+            display: block;
+            width: 200px;
+            height: 200px;
+        }
+
+        .qr-modal .close-btn {
+            padding: 10px 30px;
+            background: transparent;
+            border: 2px solid #666;
+            border-radius: 8px;
+            color: #888;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        /* スマホからのメッセージ表示 */
+        .phone-message-text {
+            position: fixed;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(96, 165, 250, 0.95);
+            color: #fff;
+            padding: 20px 25px;
+            border-radius: 16px;
+            max-width: 85%;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            z-index: 150;
+            animation: fadeIn 0.3s ease;
+            text-align: center;
+        }
+
+        .phone-message-text.show {
+            display: flex;
+        }
+
+        .phone-message-text .label {
+            font-size: 0.75rem;
+            opacity: 0.8;
+        }
+
+        .phone-message-text .text {
+            font-size: 1.1rem;
+            line-height: 1.5;
+        }
+
+        .phone-message-text .processing {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body>
+    <!-- QRコードモーダル -->
+    <div class="qr-modal" id="qrModal">
+        <h2>スマホでQRコードを読み取ってください</h2>
+        <p>読み取り後、スマホでメッセージを<br>受信できるようになります</p>
+        <div class="qr-code">
+            <img id="qrCodeImage" alt="QR Code">
+        </div>
+        <button class="close-btn" id="qrCloseBtn">閉じる</button>
+    </div>
+
+    <div class="camera-status" id="cameraStatus">カメラ準備中...</div>
+    <div class="camera-container" id="cameraContainer">
+        <video id="cameraVideo" autoplay playsinline muted></video>
+        <canvas id="cameraCanvas" style="display:none;"></canvas>
+        <div class="camera-flash" id="cameraFlash"></div>
+    </div>
+    <img class="captured-image" id="capturedImage" alt="撮影画像">
     <div class="container">
-        <button class="record-btn" id="recordBtn" disabled></button>
-        <div class="hint">押しながら話す</div>
-        <div class="status-text" id="statusText"></div>
-        <div class="info-panel" id="infoPanel"></div>
+        <div class="button-area">
+            <button class="record-btn" id="recordBtn" disabled></button>
+            <div class="hint">押しながら話す</div>
+        </div>
+        <div class="display-area">
+            <div class="time-display" id="timeDisplay"></div>
+            <div class="info-panel" id="infoPanel"></div>
+            <div class="action-result" id="actionResult"></div>
+        </div>
+    </div>
+    <div class="toast" id="toast"></div>
+
+    <!-- スマホからのメッセージ -->
+    <div class="phone-message-text" id="phoneMessageText">
+        <div class="label">スマホからのメッセージ</div>
+        <div class="text" id="phoneMessageContent"></div>
     </div>
 
     <script src="api-config.js"></script>
     <script>
+        // ルームID自動生成（ページ固有）
+        let currentRoomId = localStorage.getItem('ai-chat-room-id');
+        if (!currentRoomId) {
+            currentRoomId = 'room_' + Math.random().toString(36).substring(2, 10);
+            localStorage.setItem('ai-chat-room-id', currentRoomId);
+        }
+        console.log('Room ID:', currentRoomId);
+
+        // ボイスメッセージ送信の状態管理（早期宣言）
+        let isVoiceSendMode = false;
+
+        // QRコード関連
+        const qrModal = document.getElementById('qrModal');
+        const qrCodeImage = document.getElementById('qrCodeImage');
+        const qrCloseBtn = document.getElementById('qrCloseBtn');
+
+        qrCloseBtn.addEventListener('click', () => {
+            qrModal.classList.remove('show');
+            // メッセージ送信モードのUIに切り替え
+            if (isVoiceSendMode) {
+                enterVoiceSendUI();
+            }
+        });
+
+        // メッセージ送信モードのUI
+        function enterVoiceSendUI() {
+            recordBtn.classList.add('voice-send-mode');
+            document.querySelector('.hint').classList.add('voice-send-mode');
+            document.querySelector('.hint').textContent = '押しながらメッセージを録音';
+        }
+
+        // 通常モードのUIに戻す
+        function exitVoiceSendUI() {
+            recordBtn.classList.remove('voice-send-mode');
+            document.querySelector('.hint').classList.remove('voice-send-mode');
+            document.querySelector('.hint').textContent = '押しながら話す';
+        }
+
+        // スマホからのメッセージ受信
+        const phoneMessageText = document.getElementById('phoneMessageText');
+        const phoneMessageContent = document.getElementById('phoneMessageContent');
+        let phoneMessageProcessedIds = new Set();
+        let phoneAudio = null;
+        const pageLoadTimestamp = Date.now();  // ページ読み込み時刻
+
+        // スマホからのメッセージをポーリング
+        async function pollPhoneMessages() {
+            try {
+                const url = `${FIREBASE_CONFIG.databaseURL}/messages.json`;
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (!data) return;
+
+                for (const [key, value] of Object.entries(data)) {
+                    // このルームのスマホからのメッセージのみ（ページ読み込み後のもの）
+                    const isFromPhone = value.from === 'phone';
+                    const isMyRoom = value.roomId === currentRoomId;
+                    const isNew = !phoneMessageProcessedIds.has(key);
+                    const isAfterPageLoad = value.timestamp > pageLoadTimestamp;
+
+                    if (isFromPhone && isMyRoom && isNew && isAfterPageLoad) {
+                        phoneMessageProcessedIds.add(key);
+                        // 新しいメッセージを処理
+                        await processPhoneMessage(value);
+                    }
+                }
+            } catch (err) {
+                console.error('Poll phone messages error:', err);
+            }
+        }
+
+        // スマホからのメッセージを処理（STT + 再生）
+        async function processPhoneMessage(msg) {
+            console.log('Processing phone message:', msg);
+
+            // メッセージ表示（処理中）
+            phoneMessageContent.textContent = '音声を処理中...';
+            phoneMessageText.classList.add('show');
+
+            // STTで文字起こし（audio_base64があれば使用）
+            let transcribedText = '';
+            if (msg.audio_base64) {
+                try {
+                    console.log('Using audio_base64 for STT');
+                    transcribedText = await transcribeAudio(msg.audio_base64);
+                } catch (err) {
+                    console.error('STT error:', err);
+                }
+            }
+
+            // 文字起こし結果を表示
+            phoneMessageContent.textContent = transcribedText || 'スマホからの音声メッセージ';
+
+            // 音声を再生
+            phoneAudio = new Audio(msg.audio_url);
+            phoneAudio.play();
+
+            // 再生終了後に表示を消す
+            phoneAudio.onended = () => {
+                setTimeout(() => {
+                    phoneMessageText.classList.remove('show');
+                }, 2000);
+            };
+
+            phoneAudio.onerror = () => {
+                console.error('Audio playback error');
+                setTimeout(() => {
+                    phoneMessageText.classList.remove('show');
+                }, 3000);
+            };
+        }
+
+        // BlobをBase64に変換（STT用）
+        function blobToBase64ForSTT(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const base64 = reader.result.split(',')[1];
+                    resolve(base64);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        // Gemini APIで音声をテキストに変換
+        async function transcribeAudio(base64Audio, mimeType = 'audio/webm') {
+            const apiKey = API_CONFIG.GEMINI_API_KEY;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            console.log('Transcribing audio, mimeType:', mimeType, 'size:', base64Audio.length);
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { inlineData: { mimeType: mimeType, data: base64Audio } },
+                            { text: "この音声を正確に文字起こししてください。" }
+                        ]
+                    }]
+                })
+            });
+
+            console.log('STT response status:', response.status);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('STT error:', errorText);
+                throw new Error(`STT API error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('STT response:', data);
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            return text.trim();
+        }
+
+        // ポーリング開始（3秒ごと）
+        setInterval(pollPhoneMessages, 3000);
+        // 初回実行
+        setTimeout(pollPhoneMessages, 1000);
+
+        // QRコードを表示
+        function showQRCode() {
+            const phoneUrl = `${window.location.origin}/phone-receiver.html?room=${currentRoomId}`;
+            // QR Server APIでQRコード生成
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(phoneUrl)}`;
+            qrCodeImage.src = qrUrl;
+            qrModal.classList.add('show');
+            console.log('Phone URL:', phoneUrl);
+        }
+
         // DOM要素
         const recordBtn = document.getElementById('recordBtn');
-        const statusText = document.getElementById('statusText');
         const infoPanel = document.getElementById('infoPanel');
+        const timeDisplay = document.getElementById('timeDisplay');
+        const actionResult = document.getElementById('actionResult');
+        const toast = document.getElementById('toast');
+        const cameraVideo = document.getElementById('cameraVideo');
+        const cameraCanvas = document.getElementById('cameraCanvas');
+        const capturedImage = document.getElementById('capturedImage');
+        const cameraStatus = document.getElementById('cameraStatus');
+        const cameraContainer = document.getElementById('cameraContainer');
+        const cameraFlash = document.getElementById('cameraFlash');
+
+        // カメラ関連
+        let cameraStream = null;
+        let cameraReady = false;
+        let waitingForImageDescription = false;
 
         // 状態
         let websocket = null;
@@ -181,6 +681,75 @@
             }
             await connect(API_CONFIG.GEMINI_API_KEY);
         });
+
+        // カメラ初期化（バックグラウンド）
+        async function initCamera() {
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'environment', // 背面カメラ優先
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                });
+                cameraVideo.srcObject = cameraStream;
+                await cameraVideo.play();
+                cameraReady = true;
+                console.log('Camera initialized');
+                return true;
+            } catch (error) {
+                console.error('Camera init error:', error);
+                cameraReady = false;
+                return false;
+            }
+        }
+
+        // カメラプレビューを表示して1秒後に撮影
+        async function showCameraAndCapture() {
+            // カメラが未初期化なら初期化
+            if (!cameraReady || !cameraStream) {
+                cameraStatus.textContent = 'カメラ起動中...';
+                cameraStatus.classList.add('show');
+                const initialized = await initCamera();
+                if (!initialized) {
+                    cameraStatus.textContent = 'カメラ使用不可';
+                    setTimeout(() => cameraStatus.classList.remove('show'), 2000);
+                    return null;
+                }
+                cameraStatus.classList.remove('show');
+            }
+
+            // カメラプレビューを全画面表示
+            cameraContainer.classList.add('show');
+
+            // 1秒待機
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // フラッシュエフェクト
+            cameraFlash.classList.add('flash');
+            setTimeout(() => cameraFlash.classList.remove('flash'), 300);
+
+            // 撮影
+            cameraCanvas.width = cameraVideo.videoWidth;
+            cameraCanvas.height = cameraVideo.videoHeight;
+            const ctx = cameraCanvas.getContext('2d');
+            ctx.drawImage(cameraVideo, 0, 0);
+
+            // JPEG形式でbase64取得
+            const dataUrl = cameraCanvas.toDataURL('image/jpeg', 0.8);
+            const base64Data = dataUrl.split(',')[1];
+
+            // カメラプレビューを閉じる
+            setTimeout(() => {
+                cameraContainer.classList.remove('show');
+                // 撮影した画像を表示（音声終了まで表示し続ける）
+                capturedImage.src = dataUrl;
+                capturedImage.classList.add('show');
+                waitingForImageDescription = true;
+            }, 300);
+
+            return base64Data;
+        }
 
         // 接続
         async function connect(apiKey) {
@@ -199,6 +768,9 @@
                         noiseSuppression: true
                     }
                 });
+
+                // カメラ初期化（バックグラウンドで）
+                initCamera();
 
                 // WebSocket接続
                 const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`;
@@ -221,12 +793,53 @@
                     console.log('WebSocket closed:', event.code);
                     isConnected = false;
                     recordBtn.disabled = true;
+                    // 3秒後に再接続を試みる
+                    setTimeout(() => {
+                        console.log('Reconnecting...');
+                        connect(apiKey);
+                    }, 3000);
                 };
 
             } catch (error) {
                 console.error('Connection error:', error);
             }
         }
+
+        // Firebase設定
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyCi1I05bb2Z5es2JJcGfte8cEnWeBtbDVc",
+            authDomain: "raspi-111.firebaseapp.com",
+            databaseURL: "https://raspi-111-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "raspi-111",
+            storageBucket: "raspi-111.firebasestorage.app"
+        };
+
+        // 利用可能なツール（AIが呼び出せる機能）
+        const availableTools = {
+            functionDeclarations: [
+                {
+                    name: "camera_capture",
+                    description: "カメラで写真を撮影して、写っているものを説明する。「目の前に何がある？」「これは何？」「写真撮って」「何が見える？」「周りを見て」などと言われたら使う。",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            prompt: {
+                                type: "string",
+                                description: "画像に対する質問や指示（例: 何が写っていますか？）"
+                            }
+                        }
+                    }
+                },
+                {
+                    name: "voice_send",
+                    description: "スマホにボイスメッセージを送信する機能。以下のようなリクエストで必ず使用すること：「スマホにメッセージ送って」「メッセージ送って」「メッセージを送信して」「伝言を送って」「スマホに送って」「送信して」「メッセージ」など、メッセージや送信に関する発言があれば使う。",
+                    parameters: {
+                        type: "object",
+                        properties: {}
+                    }
+                }
+            ]
+        };
 
         // セットアップメッセージ送信
         function sendSetup() {
@@ -248,9 +861,21 @@
                             disabled: true
                         }
                     },
+                    tools: [availableTools],
                     systemInstruction: {
                         parts: [{
-                            text: "あなたは親切なAIアシスタントです。日本語で簡潔に回答してください。音声での会話なので、1-2文程度の短い応答を心がけてください。\n\nあなたができることは以下の通りです：\n- 質問に答える\n- 雑談・会話\n- アイデアの相談\n- 文章の要約・説明\n- 言語の翻訳\n\n「何ができますか？」と聞かれたら、上記のできることを簡潔に説明してください。"
+                            text: `あなたは親切なAIアシスタントです。日本語で簡潔に回答してください。音声での会話なので、1-2文程度の短い応答を心がけてください。
+
+あなたには以下の機能があります：
+- camera_capture: カメラで撮影して画像認識
+- voice_send: スマホにボイスメッセージを送信
+
+【重要】ツール使用ルール：
+- 「メッセージ」「送って」「送信」「伝言」「スマホ」などの単語が含まれたら → voice_sendを必ず使う
+- 「何がある」「これ何」「見て」「写真」「撮って」「カメラ」などの単語が含まれたら → camera_captureを必ず使う
+
+camera_captureを使うと、撮影した画像の認識結果が返ってくるので、それをユーザーに伝えてください。
+voice_sendを使うと、QRコードが表示されます。AIは「QRコードを表示しました。スマホで読み取って、ボタンを押しながらメッセージを録音してください」と案内してください。`
                         }]
                     }
                 }
@@ -278,13 +903,30 @@
                         return;
                     }
 
+                    // ツール呼び出しの処理
+                    if (msg.toolCall) {
+                        console.log('Tool call received:', msg.toolCall);
+                        await handleToolCall(msg.toolCall);
+                        return;
+                    }
+
                     if (msg.serverContent) {
                         const content = msg.serverContent;
                         if (content.modelTurn && content.modelTurn.parts) {
                             for (const part of content.modelTurn.parts) {
+                                // 音声データの処理
                                 if (part.inlineData && part.inlineData.mimeType.startsWith('audio/')) {
                                     const audioData = base64ToArrayBuffer(part.inlineData.data);
                                     queueAudio(audioData);
+                                }
+                                // Function Call の処理
+                                if (part.functionCall) {
+                                    console.log('Function call:', part.functionCall);
+                                    try {
+                                        await executeFunctionCall(part.functionCall);
+                                    } catch (e) {
+                                        console.error('Function call error:', e);
+                                    }
                                 }
                             }
                         }
@@ -296,6 +938,307 @@
             } catch (error) {
                 console.error('Message handling error:', error);
             }
+        }
+
+        // ツール呼び出しのハンドリング
+        async function handleToolCall(toolCall) {
+            if (toolCall.functionCalls) {
+                for (const fc of toolCall.functionCalls) {
+                    try {
+                        await executeFunctionCall(fc);
+                    } catch (e) {
+                        console.error('Tool call error:', e);
+                    }
+                }
+            }
+        }
+
+        // Function Call の実行
+        async function executeFunctionCall(functionCall) {
+            const { name, args } = functionCall;
+            console.log(`Executing function: ${name}`, args);
+
+            switch (name) {
+                case 'camera_capture':
+                    await handleCameraCapture(functionCall);
+                    break;
+                case 'voice_send':
+                    await handleVoiceSend(functionCall);
+                    break;
+                default:
+                    console.warn('Unknown function:', name);
+                    sendFunctionResponse(functionCall.id, { success: false, message: "不明な機能です" });
+            }
+        }
+
+        // カメラ撮影と画像認識
+        async function handleCameraCapture(functionCall) {
+            console.log('handleCameraCapture started');
+            const { args } = functionCall;
+            const parsedArgs = args ? (typeof args === 'string' ? JSON.parse(args) : args) : {};
+            const prompt = parsedArgs.prompt || 'この画像に写っているものを説明してください';
+
+            // カメラプレビューを表示して1秒後に撮影
+            const imageBase64 = await showCameraAndCapture();
+
+            if (!imageBase64) {
+                sendFunctionResponse(functionCall.id, { success: false, message: "カメラが使用できません" });
+                console.log('handleCameraCapture: no image');
+                return;
+            }
+
+            try {
+                // Gemini REST APIで画像認識
+                console.log('Calling Gemini Vision API...');
+                const description = await analyzeImageWithGemini(imageBase64, prompt);
+                console.log('Vision API response:', description);
+
+                // Function Responseで認識結果を返す
+                sendFunctionResponse(functionCall.id, {
+                    success: true,
+                    message: `画像認識結果: ${description}`
+                });
+                console.log('handleCameraCapture completed:', { isConnected, isRecording });
+            } catch (error) {
+                console.error('Image analysis error:', error);
+                sendFunctionResponse(functionCall.id, {
+                    success: false,
+                    message: "画像の認識に失敗しました"
+                });
+            }
+        }
+
+        // Gemini REST APIで画像認識
+        async function analyzeImageWithGemini(imageBase64, prompt) {
+            const apiKey = API_CONFIG.GEMINI_API_KEY;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            {
+                                text: prompt + "\n\n日本語で回答してください。音声で読み上げるため、1-2文程度の簡潔な説明をお願いします。"
+                            },
+                            {
+                                inlineData: {
+                                    mimeType: "image/jpeg",
+                                    data: imageBase64
+                                }
+                            }
+                        ]
+                    }]
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`API error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data.candidates[0].content.parts[0].text;
+        }
+
+        // ボイスメッセージ送信の状態管理
+        let voiceSendRecorder = null;
+        let voiceSendChunks = [];
+        let voiceSendFunctionId = null;
+
+        // ボイスメッセージ送信処理
+        async function handleVoiceSend(functionCall) {
+            console.log('handleVoiceSend started');
+
+            // QRコードを表示
+            showQRCode();
+
+            // ボイスメッセージモードを有効化
+            isVoiceSendMode = true;
+            voiceSendFunctionId = functionCall.id;
+            voiceSendChunks = [];
+
+            // Function Responseを返してAIに説明させる
+            sendFunctionResponse(functionCall.id, {
+                success: true,
+                message: "画面にQRコードを表示しました。スマホでこのQRコードを読み取ると、メッセージを受信できるようになります。読み取ったら、ボタンを押しながらメッセージを話してください。"
+            });
+
+            console.log('Voice send mode enabled, QR code shown');
+        }
+
+        // ボイスメッセージ用の録音を開始
+        async function startVoiceSendRecording() {
+            if (!isVoiceSendMode) return;
+
+            try {
+                voiceSendChunks = [];
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        sampleRate: 16000,
+                        channelCount: 1,
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    }
+                });
+
+                voiceSendRecorder = new MediaRecorder(stream, {
+                    mimeType: 'audio/webm;codecs=opus'
+                });
+
+                voiceSendRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) {
+                        voiceSendChunks.push(e.data);
+                    }
+                };
+
+                voiceSendRecorder.onstop = async () => {
+                    console.log('Voice send recording stopped');
+                    if (voiceSendChunks.length > 0 && isVoiceSendMode) {
+                        await sendVoiceMessageToFirebase();
+                    }
+                    // ストリームを停止
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                voiceSendRecorder.start(100);
+                console.log('Voice send recording started');
+            } catch (error) {
+                console.error('Voice send recording error:', error);
+                isVoiceSendMode = false;
+            }
+        }
+
+        // ボイスメッセージ用の録音を停止
+        function stopVoiceSendRecording() {
+            if (voiceSendRecorder && voiceSendRecorder.state === 'recording') {
+                voiceSendRecorder.stop();
+            }
+        }
+
+        // Firebase にボイスメッセージを送信
+        async function sendVoiceMessageToFirebase() {
+            try {
+                // WebM Blobを作成
+                const audioBlob = new Blob(voiceSendChunks, { type: 'audio/webm' });
+                console.log('Audio blob size:', audioBlob.size);
+
+                // Base64に変換
+                const base64Audio = await blobToBase64(audioBlob);
+
+                // タイムスタンプとファイル名を生成
+                const timestamp = Date.now();
+                const filename = `pc_${currentRoomId}_${timestamp}.webm`;
+
+                // Firebase Storage にアップロード（audioフォルダを使用）
+                const storageUrl = `https://firebasestorage.googleapis.com/v0/b/${FIREBASE_CONFIG.storageBucket}/o`;
+                const encodedPath = encodeURIComponent(`audio/${filename}`);
+                const uploadUrl = `${storageUrl}/${encodedPath}`;
+
+                console.log('Uploading to Firebase Storage...', uploadUrl);
+                const uploadResponse = await fetch(uploadUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'audio/webm'
+                    },
+                    body: audioBlob
+                });
+
+                console.log('Storage response:', uploadResponse.status);
+                if (!uploadResponse.ok) {
+                    const errorText = await uploadResponse.text();
+                    console.error('Storage error:', errorText);
+                    throw new Error(`Storage upload failed: ${uploadResponse.status} - ${errorText}`);
+                }
+
+                const downloadUrl = `${storageUrl}/${encodedPath}?alt=media`;
+                console.log('Upload successful:', downloadUrl);
+
+                // Firebase Realtime Database にメタデータを登録（Base64も含める）
+                const messageData = {
+                    from: "pc",
+                    audio_url: downloadUrl,
+                    audio_base64: base64Audio,  // STT用にBase64データも保存
+                    filename: filename,
+                    timestamp: timestamp,
+                    played: false,
+                    roomId: currentRoomId
+                };
+
+                // messagesパスに保存（既存のセキュリティルールに合わせる）
+                const dbUrl = `${FIREBASE_CONFIG.databaseURL}/messages.json`;
+                console.log('Saving to Realtime Database...');
+                const dbResponse = await fetch(dbUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(messageData)
+                });
+
+                if (!dbResponse.ok) {
+                    throw new Error(`Database save failed: ${dbResponse.status}`);
+                }
+
+                console.log('Voice message sent successfully!');
+
+            } catch (error) {
+                console.error('Send voice message error:', error);
+                showToast('送信に失敗しました');
+            } finally {
+                // モードをリセット
+                isVoiceSendMode = false;
+                voiceSendChunks = [];
+                voiceSendFunctionId = null;
+                // UIを元に戻す
+                exitVoiceSendUI();
+            }
+        }
+
+        // BlobをBase64に変換
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const base64 = reader.result.split(',')[1];
+                    resolve(base64);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        // Function Response の送信
+        function sendFunctionResponse(id, result) {
+            if (!websocket || websocket.readyState !== WebSocket.OPEN) return;
+            if (!id) return; // IDがない場合はレスポンス不要
+
+            websocket.send(JSON.stringify({
+                toolResponse: {
+                    functionResponses: [{
+                        id: id,
+                        response: result
+                    }]
+                }
+            }));
+        }
+
+        // トースト通知
+        function showToast(message) {
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+
+        // HTMLエスケープ
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         // 録音ボタン
@@ -311,37 +1254,26 @@
             stopRecording();
         });
 
-        // ステータス更新
-        function updateStatus(text, active = false) {
-            statusText.textContent = text;
-            statusText.classList.toggle('active', active);
-        }
-
-        // 機能パネル表示
-        function showCapabilities() {
-            infoPanel.innerHTML = `
-                <h3>できること</h3>
-                <ul>
-                    <li>質問に答える</li>
-                    <li>雑談・会話</li>
-                    <li>アイデアの相談</li>
-                    <li>文章の要約・説明</li>
-                    <li>言語の翻訳</li>
-                </ul>
-            `;
-            infoPanel.classList.add('show');
-        }
-
         // 録音開始
         async function startRecording() {
-            if (!isConnected || isRecording) return;
+            console.log('startRecording called:', { isConnected, isRecording, isVoiceSendMode, btnDisabled: recordBtn.disabled });
+            if (!isConnected || isRecording) {
+                console.log('Recording blocked:', { isConnected, isRecording });
+                return;
+            }
 
             isRecording = true;
             recordBtn.classList.add('recording');
-            updateStatus('聞いています...', true);
 
             if (audioContext.state === 'suspended') {
                 await audioContext.resume();
+            }
+
+            // ボイスメッセージモードの場合、別の録音を開始
+            if (isVoiceSendMode) {
+                console.log('Starting voice send recording');
+                await startVoiceSendRecording();
+                return;
             }
 
             sendActivityStart();
@@ -378,10 +1310,18 @@
 
         // 録音停止
         function stopRecording() {
+            console.log('stopRecording called:', { isRecording, isVoiceSendMode, audioChunkCount });
             if (!isRecording) return;
 
             isRecording = false;
             recordBtn.classList.remove('recording');
+
+            // ボイスメッセージモードの場合、そちらの録音を停止
+            if (isVoiceSendMode) {
+                console.log('Stopping voice send recording');
+                stopVoiceSendRecording();
+                return;
+            }
 
             if (recordBtn._processor) {
                 recordBtn._processor.disconnect();
@@ -398,15 +1338,18 @@
 
             if (audioChunkCount > 0) {
                 sendActivityEnd();
-                updateStatus('応答中...', true);
             } else {
-                updateStatus('');
+                console.log('No audio chunks, skipping activityEnd');
             }
         }
 
         // 音声活動開始を通知
         function sendActivityStart() {
-            if (!websocket || websocket.readyState !== WebSocket.OPEN) return;
+            if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+                console.log('sendActivityStart: WebSocket not ready');
+                return;
+            }
+            console.log('sendActivityStart');
             websocket.send(JSON.stringify({
                 realtimeInput: { activityStart: {} }
             }));
@@ -414,7 +1357,11 @@
 
         // 音声活動終了を通知
         function sendActivityEnd() {
-            if (!websocket || websocket.readyState !== WebSocket.OPEN) return;
+            if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+                console.log('sendActivityEnd: WebSocket not ready');
+                return;
+            }
+            console.log('sendActivityEnd, chunks:', audioChunkCount);
             websocket.send(JSON.stringify({
                 realtimeInput: { activityEnd: {} }
             }));
@@ -425,6 +1372,9 @@
         function sendAudio(base64Audio) {
             if (!websocket || websocket.readyState !== WebSocket.OPEN) return;
             audioChunkCount++;
+            if (audioChunkCount % 10 === 1) {
+                console.log('sendAudio chunk:', audioChunkCount);
+            }
             websocket.send(JSON.stringify({
                 realtimeInput: {
                     audio: {
@@ -474,18 +1424,14 @@
             }
         }
 
-        let isFirstResponse = true;
-
         function onTurnComplete() {
+            console.log('onTurnComplete called:', { isConnected, isRecording });
             nextPlayTime = 0;
-            updateStatus('');
 
-            // 最初の応答後に機能一覧を表示
-            if (isFirstResponse) {
-                isFirstResponse = false;
-                setTimeout(() => {
-                    showCapabilities();
-                }, 500);
+            // 画像認識の説明が終わったら画像を閉じる
+            if (waitingForImageDescription) {
+                waitingForImageDescription = false;
+                capturedImage.classList.remove('show');
             }
         }
 

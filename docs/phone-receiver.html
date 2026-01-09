@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>AI Chat - Phone</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            position: fixed;
+            width: 100%;
+        }
+
+        .container {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            padding-top: env(safe-area-inset-top, 15px);
+            padding-bottom: env(safe-area-inset-bottom, 15px);
+        }
+
+        .header {
+            text-align: center;
+            padding: 15px 0;
+            flex-shrink: 0;
+        }
+
+        .header h1 {
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+            color: #4ade80;
+        }
+
+        .header p {
+            font-size: 0.85rem;
+            color: #888;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px;
+            font-size: 0.85rem;
+            color: #888;
+            flex-shrink: 0;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4ade80;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .message {
+            margin-bottom: 15px;
+        }
+
+        .message.received {
+            text-align: left;
+        }
+
+        .message .label {
+            font-size: 0.7rem;
+            color: #888;
+            margin-bottom: 4px;
+        }
+
+        .message .bubble {
+            display: inline-block;
+            max-width: 85%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            background: rgba(255,255,255,0.1);
+            border-bottom-left-radius: 4px;
+        }
+
+        .message .bubble:active {
+            opacity: 0.7;
+        }
+
+        .message .bubble.playing {
+            animation: playing 0.5s infinite alternate;
+        }
+
+        @keyframes playing {
+            from { opacity: 1; }
+            to { opacity: 0.5; }
+        }
+
+        .message .time {
+            font-size: 0.65rem;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .empty-messages {
+            text-align: center;
+            color: #666;
+            padding: 40px 20px;
+            font-size: 0.9rem;
+        }
+
+        /* 録音バー */
+        .record-bar {
+            flex-shrink: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            gap: 15px;
+        }
+
+        .record-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            border: 4px solid #4ade80;
+            background: transparent;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .record-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 35px;
+            height: 35px;
+            background: #4ade80;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+
+        .record-btn.recording {
+            border-color: #ef4444;
+            animation: pulse-ring 1s infinite;
+        }
+
+        .record-btn.recording::before {
+            background: #ef4444;
+            border-radius: 8px;
+            width: 26px;
+            height: 26px;
+        }
+
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            100% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+        }
+
+        .record-hint {
+            color: #888;
+            font-size: 0.85rem;
+        }
+
+        .message.sent {
+            text-align: right;
+        }
+
+        .message.sent .bubble {
+            background: #4ade80;
+            color: #000;
+            border-bottom-left-radius: 18px;
+            border-bottom-right-radius: 4px;
+        }
+
+        .error-screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            padding: 30px;
+        }
+
+        .error-screen.active {
+            display: flex;
+        }
+
+        .error-screen h2 {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            color: #ef4444;
+        }
+
+        .error-screen p {
+            color: #888;
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .main-content.hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="error-screen" id="errorScreen">
+            <h2>ルームIDがありません</h2>
+            <p>QRコードを読み取ってアクセスしてください</p>
+        </div>
+
+        <div class="main-content hidden" id="mainContent">
+            <div class="header">
+                <h1>AI Chat - メッセージ受信</h1>
+                <p>PCから送信されたメッセージが表示されます</p>
+            </div>
+
+            <div class="status">
+                <span class="status-dot"></span>
+                <span>接続中</span>
+            </div>
+
+            <div class="messages" id="messages">
+                <div class="empty-messages">ボタンを押しながら<br>メッセージを録音</div>
+            </div>
+
+            <div class="record-bar">
+                <button class="record-btn" id="recordBtn"></button>
+                <span class="record-hint">押しながら話す</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="api-config.js"></script>
+    <script>
+        // Firebase REST API設定
+        const FIREBASE_CONFIG = {
+            databaseURL: "https://raspi-111-default-rtdb.asia-southeast1.firebasedatabase.app",
+            storageBucket: "raspi-111.firebasestorage.app"
+        };
+
+        // DOM要素
+        const errorScreen = document.getElementById('errorScreen');
+        const mainContent = document.getElementById('mainContent');
+        const messagesEl = document.getElementById('messages');
+        const recordBtn = document.getElementById('recordBtn');
+
+        // 状態
+        let roomId = null;
+        let currentAudio = null;
+        let processedIds = new Set();
+        let isRecording = false;
+        let mediaRecorder = null;
+        let audioChunks = [];
+
+        // URLからRoom IDを取得
+        function getRoomIdFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('room');
+        }
+
+        // 初期化
+        function init() {
+            roomId = getRoomIdFromUrl();
+
+            if (!roomId) {
+                errorScreen.classList.add('active');
+                mainContent.classList.add('hidden');
+                return;
+            }
+
+            // 表示
+            mainContent.classList.remove('hidden');
+            errorScreen.classList.remove('active');
+
+            // メッセージをポーリング
+            pollMessages();
+            setInterval(pollMessages, 3000);
+
+            // 録音ボタンのイベント
+            recordBtn.addEventListener('mousedown', startRecording);
+            recordBtn.addEventListener('mouseup', stopRecording);
+            recordBtn.addEventListener('mouseleave', stopRecording);
+            recordBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startRecording(); });
+            recordBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopRecording(); });
+        }
+
+        // 録音開始
+        async function startRecording() {
+            if (isRecording) return;
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) audioChunks.push(e.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    stream.getTracks().forEach(track => track.stop());
+                    if (audioChunks.length > 0) {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        await sendVoiceMessage(audioBlob);
+                    }
+                };
+
+                mediaRecorder.start(100);
+                isRecording = true;
+                recordBtn.classList.add('recording');
+                console.log('Recording started');
+            } catch (err) {
+                console.error('Recording error:', err);
+                alert('マイクへのアクセスを許可してください');
+            }
+        }
+
+        // 録音停止
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                recordBtn.classList.remove('recording');
+                console.log('Recording stopped');
+            }
+        }
+
+        // ボイスメッセージ送信
+        async function sendVoiceMessage(audioBlob) {
+            try {
+                const timestamp = Date.now();
+                const filename = `phone_${roomId}_${timestamp}.webm`;
+
+                // Firebase Storage にアップロード
+                const storageUrl = `https://firebasestorage.googleapis.com/v0/b/${FIREBASE_CONFIG.storageBucket}/o`;
+                const encodedPath = encodeURIComponent(`audio/${filename}`);
+                const uploadUrl = `${storageUrl}/${encodedPath}`;
+
+                console.log('Uploading to Storage...', uploadUrl);
+                const uploadResponse = await fetch(uploadUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'audio/webm' },
+                    body: audioBlob
+                });
+
+                if (!uploadResponse.ok) {
+                    throw new Error(`Storage upload failed: ${uploadResponse.status}`);
+                }
+
+                const downloadUrl = `${storageUrl}/${encodedPath}?alt=media`;
+                console.log('Upload successful:', downloadUrl);
+
+                // Base64に変換（STT用）
+                const base64Audio = await blobToBase64(audioBlob);
+
+                // Firebase Realtime Database に保存（Base64も含める）
+                const messageData = {
+                    from: "phone",
+                    audio_url: downloadUrl,
+                    audio_base64: base64Audio,  // STT用にBase64データも保存
+                    filename: filename,
+                    timestamp: timestamp,
+                    played: false,
+                    roomId: roomId
+                };
+
+                const dbUrl = `${FIREBASE_CONFIG.databaseURL}/messages.json`;
+                const dbResponse = await fetch(dbUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(messageData)
+                });
+
+                if (!dbResponse.ok) {
+                    throw new Error(`Database save failed: ${dbResponse.status}`);
+                }
+
+                console.log('Message sent successfully!');
+
+                // UIに自分のメッセージを追加
+                addSentMessageToUI(messageData);
+
+            } catch (err) {
+                console.error('Send error:', err);
+                alert('送信に失敗しました');
+            }
+        }
+
+        // 送信したメッセージをUIに追加
+        function addSentMessageToUI(msg) {
+            const emptyMsg = messagesEl.querySelector('.empty-messages');
+            if (emptyMsg) emptyMsg.remove();
+
+            const div = document.createElement('div');
+            div.className = 'message sent';
+
+            const time = new Date(msg.timestamp).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+
+            div.innerHTML = `
+                <div class="label">あなた</div>
+                <div class="bubble" data-url="${msg.audio_url}">音声メッセージ (タップで再生)</div>
+                <div class="time">${time}</div>
+            `;
+
+            const bubble = div.querySelector('.bubble');
+            bubble.addEventListener('click', () => playAudio(bubble, msg.audio_url));
+
+            messagesEl.appendChild(div);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
+        // メッセージをポーリング
+        async function pollMessages() {
+            try {
+                // messagesパスから全て取得し、roomIdでフィルタリング
+                const url = `${FIREBASE_CONFIG.databaseURL}/messages.json`;
+                console.log('Polling:', url, 'roomId:', roomId);
+                const response = await fetch(url);
+                const data = await response.json();
+
+                console.log('Poll response:', data);
+
+                if (!data) return;
+
+                const messages = [];
+                for (const [key, value] of Object.entries(data)) {
+                    // このルームのPCからのメッセージのみ
+                    const isFromPC = value.from === 'pc';
+                    const isMyRoom = value.roomId === roomId;
+                    const isNew = !processedIds.has(key);
+
+                    console.log('Checking:', key, 'from:', value.from, 'roomId:', value.roomId, 'match:', isFromPC && isMyRoom && isNew);
+
+                    if (isFromPC && isMyRoom && isNew) {
+                        value.id = key;
+                        messages.push(value);
+                        console.log('Message matched:', value);
+                    }
+                }
+
+                // タイムスタンプでソート（古い順）
+                messages.sort((a, b) => a.timestamp - b.timestamp);
+
+                for (const msg of messages) {
+                    addMessageToUI(msg);
+                    processedIds.add(msg.id);
+                }
+            } catch (err) {
+                console.error('Poll error:', err);
+            }
+        }
+
+        // メッセージをUIに追加（STT + 自動再生）
+        async function addMessageToUI(msg) {
+            // phone以外からのメッセージのみ表示
+            if (msg.from === 'phone') return;
+
+            const emptyMsg = messagesEl.querySelector('.empty-messages');
+            if (emptyMsg) emptyMsg.remove();
+
+            const div = document.createElement('div');
+            div.className = 'message received';
+
+            const time = new Date(msg.timestamp).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+
+            // まず「処理中」で表示
+            div.innerHTML = `
+                <div class="label">PC</div>
+                <div class="bubble" data-url="${msg.audio_url || ''}">音声を処理中...</div>
+                <div class="time">${time}</div>
+            `;
+
+            messagesEl.appendChild(div);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+
+            const bubble = div.querySelector('.bubble');
+
+            // STTで文字起こし（audio_base64があれば使用、なければfetch）
+            try {
+                let base64Audio = msg.audio_base64;
+
+                // audio_base64がない場合はfetchを試みる（CORS許可されている場合のみ動作）
+                if (!base64Audio && msg.audio_url) {
+                    try {
+                        const audioResponse = await fetch(msg.audio_url);
+                        const audioBlob = await audioResponse.blob();
+                        base64Audio = await blobToBase64(audioBlob);
+                    } catch (fetchErr) {
+                        console.log('Fetch failed (CORS), skipping STT:', fetchErr);
+                    }
+                }
+
+                if (base64Audio) {
+                    const transcribedText = await transcribeAudio(base64Audio);
+                    bubble.textContent = transcribedText || '(音声メッセージ)';
+                } else {
+                    bubble.textContent = '(音声メッセージ)';
+                }
+
+                // 自動再生
+                if (msg.audio_url) {
+                    const audio = new Audio(msg.audio_url);
+                    audio.play();
+                }
+            } catch (err) {
+                console.error('STT error:', err);
+                bubble.textContent = '(音声メッセージ)';
+
+                // エラーでも再生
+                if (msg.audio_url) {
+                    const audio = new Audio(msg.audio_url);
+                    audio.play();
+                }
+            }
+
+            // タップで再生
+            if (msg.audio_url) {
+                bubble.addEventListener('click', () => playAudio(bubble, msg.audio_url));
+            }
+        }
+
+        // BlobをBase64に変換
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const base64 = reader.result.split(',')[1];
+                    resolve(base64);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        // Gemini APIで音声をテキストに変換
+        async function transcribeAudio(base64Audio) {
+            const apiKey = API_CONFIG.GEMINI_API_KEY;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            console.log('Transcribing audio, size:', base64Audio.length);
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { inlineData: { mimeType: 'audio/webm', data: base64Audio } },
+                            { text: "この音声を正確に文字起こししてください。" }
+                        ]
+                    }]
+                })
+            });
+
+            console.log('STT response status:', response.status);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('STT error:', errorText);
+                throw new Error(`STT API error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('STT response:', data);
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            return text.trim();
+        }
+
+        // 音声再生
+        function playAudio(bubble, url) {
+            if (currentAudio) {
+                currentAudio.pause();
+                document.querySelectorAll('.bubble.playing').forEach(b => b.classList.remove('playing'));
+            }
+
+            if (bubble.classList.contains('playing')) {
+                currentAudio = null;
+                return;
+            }
+
+            bubble.classList.add('playing');
+            currentAudio = new Audio(url);
+            currentAudio.play();
+            currentAudio.onended = () => {
+                bubble.classList.remove('playing');
+                currentAudio = null;
+            };
+        }
+
+        // 初期化実行
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+[
+  {
+    "origin": ["https://raspi-111.web.app", "http://localhost:5000"],
+    "method": ["GET", "HEAD"],
+    "maxAgeSeconds": 3600
+  }
+]
