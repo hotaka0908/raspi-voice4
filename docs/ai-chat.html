@@ -660,6 +660,212 @@
             font-size: 0.9rem;
             opacity: 0.8;
         }
+
+        /* ライフログパネル（左側） */
+        .lifelog-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            width: 220px;
+            max-height: calc(100vh - 40px);
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 100;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .lifelog-panel.show {
+            display: flex;
+        }
+
+        .lifelog-panel::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .lifelog-panel::-webkit-scrollbar-thumb {
+            background: rgba(100, 150, 255, 0.3);
+            border-radius: 2px;
+        }
+
+        .lifelog-header {
+            font-size: 0.65rem;
+            color: rgba(150, 200, 255, 0.7);
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid rgba(100, 150, 255, 0.2);
+        }
+
+        .lifelog-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 8px;
+            background: rgba(20, 30, 50, 0.6);
+            border-radius: 10px;
+            border: 1px solid rgba(100, 150, 255, 0.2);
+            box-shadow: 0 0 10px rgba(100, 150, 255, 0.1);
+            animation: lifelogAppear 0.5s ease-out;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+        }
+
+        .lifelog-item:hover {
+            background: rgba(30, 45, 70, 0.8);
+            box-shadow: 0 0 15px rgba(100, 150, 255, 0.2);
+        }
+
+        .lifelog-item .thumbnail {
+            position: relative;
+            width: 50px;
+            height: 50px;
+            border-radius: 6px;
+            overflow: hidden;
+            flex-shrink: 0;
+            border: 1px solid rgba(100, 150, 255, 0.3);
+        }
+
+        .lifelog-item .thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .lifelog-item .info {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .lifelog-item .time-label {
+            font-size: 0.6rem;
+            color: rgba(150, 200, 255, 0.7);
+        }
+
+        .lifelog-item .comment-text {
+            font-size: 0.7rem;
+            color: rgba(220, 230, 255, 0.9);
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .lifelog-item .comment-text.loading {
+            color: rgba(255, 200, 100, 0.8);
+            font-style: italic;
+        }
+
+        .lifelog-item .comment-indicator {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(100, 200, 150, 0.8);
+            box-shadow: 0 0 4px rgba(100, 200, 150, 0.6);
+        }
+
+        .lifelog-item .comment-indicator.loading {
+            background: rgba(255, 200, 100, 0.8);
+            animation: commentLoading 1s ease-in-out infinite;
+        }
+
+        @keyframes commentLoading {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        @keyframes lifelogAppear {
+            from {
+                opacity: 0;
+                transform: scale(0.5) translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        /* ライフログステータス表示 */
+        .lifelog-status {
+            font-size: 0.6rem;
+            color: rgba(100, 200, 150, 0.8);
+            text-align: center;
+            padding: 4px;
+            background: rgba(100, 200, 150, 0.1);
+            border-radius: 4px;
+            display: none;
+        }
+
+        .lifelog-status.active {
+            display: block;
+            animation: statusPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes statusPulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+
+        /* 拡大表示モーダル */
+        .lifelog-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 600;
+        }
+
+        .lifelog-modal.show {
+            display: flex;
+        }
+
+        .lifelog-modal img {
+            max-width: 90%;
+            max-height: 60%;
+            border-radius: 12px;
+            border: 2px solid rgba(100, 150, 255, 0.4);
+            box-shadow: 0 0 40px rgba(100, 150, 255, 0.3);
+        }
+
+        .lifelog-modal .comment-box {
+            margin-top: 20px;
+            padding: 15px 25px;
+            background: rgba(20, 30, 50, 0.9);
+            border: 1px solid rgba(100, 150, 255, 0.3);
+            border-radius: 12px;
+            max-width: 80%;
+            text-align: center;
+        }
+
+        .lifelog-modal .comment-time {
+            font-size: 0.7rem;
+            color: rgba(150, 200, 255, 0.6);
+            margin-bottom: 8px;
+        }
+
+        .lifelog-modal .comment-text {
+            font-size: 0.95rem;
+            color: rgba(220, 230, 255, 0.95);
+            line-height: 1.5;
+        }
+
+        .lifelog-modal .close-hint {
+            position: absolute;
+            bottom: 20px;
+            color: rgba(150, 200, 255, 0.6);
+            font-size: 0.8rem;
+        }
     </style>
 </head>
 <body>
@@ -679,6 +885,23 @@
             <img id="qrCodeImage" alt="QR Code">
         </div>
         <button class="close-btn" id="qrCloseBtn">閉じる</button>
+    </div>
+
+    <!-- ライフログパネル（左側） -->
+    <div class="lifelog-panel" id="lifelogPanel">
+        <div class="lifelog-header">Life Log</div>
+        <div class="lifelog-status" id="lifelogStatus">Recording...</div>
+        <!-- サムネイルはここに動的に追加 -->
+    </div>
+
+    <!-- ライフログ拡大モーダル -->
+    <div class="lifelog-modal" id="lifelogModal">
+        <img id="lifelogModalImage" src="" alt="Lifelog">
+        <div class="comment-box">
+            <div class="comment-time" id="lifelogModalTime"></div>
+            <div class="comment-text" id="lifelogModalComment"></div>
+        </div>
+        <div class="close-hint">タップで閉じる</div>
     </div>
 
     <div class="camera-status" id="cameraStatus">カメラ準備中...</div>
@@ -896,6 +1119,20 @@
         const cameraContainer = document.getElementById('cameraContainer');
         const cameraFlash = document.getElementById('cameraFlash');
 
+        // ライフログ関連DOM
+        const lifelogPanel = document.getElementById('lifelogPanel');
+        const lifelogStatus = document.getElementById('lifelogStatus');
+        const lifelogModal = document.getElementById('lifelogModal');
+        const lifelogModalImage = document.getElementById('lifelogModalImage');
+        const lifelogModalTime = document.getElementById('lifelogModalTime');
+        const lifelogModalComment = document.getElementById('lifelogModalComment');
+
+        // ライフログ状態
+        let lifelogTimer = null;
+        let lifelogPhotos = [];
+        let isLifelogActive = false;
+        const LIFELOG_INTERVAL = 60000; // 1分 = 60000ms
+
         // カメラ関連
         let cameraStream = null;
         let cameraReady = false;
@@ -1072,6 +1309,22 @@
                         type: "object",
                         properties: {}
                     }
+                },
+                {
+                    name: "lifelog_start",
+                    description: "ライフログ（定期的な写真撮影記録）を開始する。「ライフログ開始」「ライフログを開始して」「記録を開始」「ライフログスタート」「写真の記録を始めて」などと言われたら使う。",
+                    parameters: {
+                        type: "object",
+                        properties: {}
+                    }
+                },
+                {
+                    name: "lifelog_stop",
+                    description: "ライフログを停止する。「ライフログ停止」「ライフログを止めて」「記録を停止」「ライフログストップ」「写真の記録を止めて」などと言われたら使う。",
+                    parameters: {
+                        type: "object",
+                        properties: {}
+                    }
                 }
             ]
         };
@@ -1104,13 +1357,19 @@
 あなたには以下の機能があります：
 - camera_capture: カメラで撮影して画像認識
 - voice_send: スマホにボイスメッセージを送信
+- lifelog_start: ライフログ（1分ごとの写真記録）を開始
+- lifelog_stop: ライフログを停止
 
 【重要】ツール使用ルール：
 - 「メッセージ」「送って」「送信」「伝言」「スマホ」などの単語が含まれたら → voice_sendを必ず使う
 - 「何がある」「これ何」「見て」「写真」「撮って」「カメラ」などの単語が含まれたら → camera_captureを必ず使う
+- 「ライフログ」「記録」に「開始」「スタート」「始めて」が含まれたら → lifelog_startを必ず使う
+- 「ライフログ」「記録」に「停止」「ストップ」「止めて」「終了」が含まれたら → lifelog_stopを必ず使う
 
 camera_captureを使うと、撮影した画像の認識結果が返ってくるので、それをユーザーに伝えてください。
-voice_sendを使うと、QRコードが表示されます。AIは「QRコードを表示しました。スマホで読み取って、ボタンを押しながらメッセージを録音してください」と案内してください。`
+voice_sendを使うと、QRコードが表示されます。AIは「QRコードを表示しました。スマホで読み取って、ボタンを押しながらメッセージを録音してください」と案内してください。
+lifelog_startを使うと、1分ごとに自動で写真を撮影し、画面左側に記録していきます。「ライフログを開始しました」と伝えてください。
+lifelog_stopを使うと、ライフログの記録を停止します。「ライフログを停止しました」と伝えてください。`
                         }]
                     }
                 }
@@ -1199,6 +1458,12 @@ voice_sendを使うと、QRコードが表示されます。AIは「QRコード�
                     break;
                 case 'voice_send':
                     await handleVoiceSend(functionCall);
+                    break;
+                case 'lifelog_start':
+                    handleLifelogStart(functionCall);
+                    break;
+                case 'lifelog_stop':
+                    handleLifelogStop(functionCall);
                     break;
                 default:
                     console.warn('Unknown function:', name);
@@ -1302,6 +1567,40 @@ voice_sendを使うと、QRコードが表示されます。AIは「QRコード�
             });
 
             console.log('Voice send mode enabled, QR code shown');
+        }
+
+        // ライフログ開始ハンドラー
+        function handleLifelogStart(functionCall) {
+            console.log('handleLifelogStart called');
+            if (isLifelogActive) {
+                sendFunctionResponse(functionCall.id, {
+                    success: false,
+                    message: "ライフログは既に記録中です"
+                });
+                return;
+            }
+            startLifelog();
+            sendFunctionResponse(functionCall.id, {
+                success: true,
+                message: "ライフログを開始しました。1分ごとに写真を撮影して記録します。"
+            });
+        }
+
+        // ライフログ停止ハンドラー
+        function handleLifelogStop(functionCall) {
+            console.log('handleLifelogStop called');
+            if (!isLifelogActive) {
+                sendFunctionResponse(functionCall.id, {
+                    success: false,
+                    message: "ライフログは記録していません"
+                });
+                return;
+            }
+            stopLifelog();
+            sendFunctionResponse(functionCall.id, {
+                success: true,
+                message: `ライフログを停止しました。${lifelogPhotos.length}枚の写真を記録しました。`
+            });
         }
 
         // ボイスメッセージ用の録音を開始
@@ -1688,6 +1987,233 @@ voice_sendを使うと、QRコードが表示されます。AIは「QRコード�
             }
             return btoa(binary);
         }
+
+        // ========== ライフログ機能 ==========
+
+        // ライフログを開始
+        function startLifelog() {
+            if (isLifelogActive) return;
+            isLifelogActive = true;
+            lifelogPanel.classList.add('show');
+            lifelogStatus.classList.add('active');
+            console.log('Lifelog started');
+
+            // 最初の撮影を即座に実行
+            captureLifelogPhoto();
+
+            // 1分ごとに撮影
+            lifelogTimer = setInterval(() => {
+                captureLifelogPhoto();
+            }, LIFELOG_INTERVAL);
+        }
+
+        // ライフログを停止
+        function stopLifelog() {
+            if (!isLifelogActive) return;
+            isLifelogActive = false;
+            lifelogStatus.classList.remove('active');
+            if (lifelogTimer) {
+                clearInterval(lifelogTimer);
+                lifelogTimer = null;
+            }
+            console.log('Lifelog stopped');
+        }
+
+        // ライフログ用の写真撮影（静かに撮影、UIに影響なし）
+        async function captureLifelogPhoto() {
+            if (!cameraReady || !cameraStream) {
+                console.log('Lifelog: Camera not ready, initializing...');
+                const initialized = await initCamera();
+                if (!initialized) {
+                    console.log('Lifelog: Camera init failed');
+                    return;
+                }
+            }
+
+            try {
+                // 撮影（UIを表示せずに静かに撮影）
+                cameraCanvas.width = cameraVideo.videoWidth;
+                cameraCanvas.height = cameraVideo.videoHeight;
+                const ctx = cameraCanvas.getContext('2d');
+                ctx.drawImage(cameraVideo, 0, 0);
+
+                // JPEG形式で取得
+                const dataUrl = cameraCanvas.toDataURL('image/jpeg', 0.6);
+                const base64Data = dataUrl.split(',')[1];
+                const timestamp = new Date();
+
+                // ライフログに追加（コメントは後で追加）
+                const photoIndex = lifelogPhotos.length;
+                const photo = {
+                    dataUrl: dataUrl,
+                    timestamp: timestamp,
+                    comment: null,
+                    analyzing: true
+                };
+                lifelogPhotos.push(photo);
+
+                // サムネイルをUIに追加（分析中インジケータ付き）
+                const thumbnailElement = addLifelogThumbnail(photo, photoIndex);
+
+                console.log('Lifelog photo captured:', timestamp.toLocaleTimeString());
+
+                // 非同期でコメント生成
+                generateLifelogComment(base64Data, photoIndex, thumbnailElement);
+
+            } catch (error) {
+                console.error('Lifelog capture error:', error);
+            }
+        }
+
+        // Gemini Vision APIでライフログ用コメント生成
+        async function generateLifelogComment(base64Image, photoIndex, thumbnailElement) {
+            try {
+                const apiKey = API_CONFIG.GEMINI_API_KEY;
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                {
+                                    text: `この画像はライフログとして自動撮影されたものです。
+写っている状況を1文（20文字以内）で簡潔に説明してください。
+例：「デスクで作業中」「コーヒーを飲んでいる」「外を歩いている」
+回答は説明文のみを返してください。`
+                                },
+                                {
+                                    inlineData: {
+                                        mimeType: "image/jpeg",
+                                        data: base64Image
+                                    }
+                                }
+                            ]
+                        }]
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const comment = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '分析完了';
+
+                    // 写真データを更新
+                    lifelogPhotos[photoIndex].comment = comment;
+                    lifelogPhotos[photoIndex].analyzing = false;
+
+                    // サムネイルのインジケータを更新
+                    const indicator = thumbnailElement.querySelector('.comment-indicator');
+                    if (indicator) {
+                        indicator.classList.remove('loading');
+                    }
+
+                    // コメントテキストを更新
+                    const commentTextEl = document.getElementById(`lifelog-comment-${photoIndex}`);
+                    if (commentTextEl) {
+                        commentTextEl.textContent = comment;
+                        commentTextEl.classList.remove('loading');
+                    }
+
+                    console.log('Lifelog comment generated:', comment);
+                } else {
+                    throw new Error(`API error: ${response.status}`);
+                }
+            } catch (error) {
+                console.error('Lifelog comment generation error:', error);
+                lifelogPhotos[photoIndex].comment = '分析エラー';
+                lifelogPhotos[photoIndex].analyzing = false;
+
+                const indicator = thumbnailElement.querySelector('.comment-indicator');
+                if (indicator) {
+                    indicator.classList.remove('loading');
+                    indicator.style.background = 'rgba(255, 100, 100, 0.8)';
+                }
+
+                // コメントテキストを更新
+                const commentTextEl = document.getElementById(`lifelog-comment-${photoIndex}`);
+                if (commentTextEl) {
+                    commentTextEl.textContent = '分析エラー';
+                    commentTextEl.classList.remove('loading');
+                }
+            }
+        }
+
+        // サムネイルをパネルに追加
+        function addLifelogThumbnail(photo, photoIndex) {
+            const item = document.createElement('div');
+            item.className = 'lifelog-item';
+
+            // サムネイル部分
+            const thumbnail = document.createElement('div');
+            thumbnail.className = 'thumbnail';
+
+            const img = document.createElement('img');
+            img.src = photo.dataUrl;
+            img.alt = 'Lifelog';
+
+            // コメントインジケータ（分析中は黄色、完了後は緑）
+            const indicator = document.createElement('div');
+            indicator.className = 'comment-indicator loading';
+
+            thumbnail.appendChild(img);
+            thumbnail.appendChild(indicator);
+
+            // 情報部分（時刻とコメント）
+            const info = document.createElement('div');
+            info.className = 'info';
+
+            const timeLabel = document.createElement('div');
+            timeLabel.className = 'time-label';
+            timeLabel.textContent = photo.timestamp.toLocaleTimeString('ja-JP', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            const commentText = document.createElement('div');
+            commentText.className = 'comment-text loading';
+            commentText.textContent = '分析中...';
+            commentText.id = `lifelog-comment-${photoIndex}`;
+
+            info.appendChild(timeLabel);
+            info.appendChild(commentText);
+
+            item.appendChild(thumbnail);
+            item.appendChild(info);
+
+            // クリックで拡大表示
+            item.addEventListener('click', () => {
+                showLifelogModal(photoIndex);
+            });
+
+            // パネルの末尾に追加（古い写真が上、新しい写真が下）
+            lifelogPanel.appendChild(item);
+
+            // 自動スクロールで最新を表示
+            lifelogPanel.scrollTop = lifelogPanel.scrollHeight;
+
+            return item;
+        }
+
+        // ライフログモーダル表示
+        function showLifelogModal(photoIndex) {
+            const photo = lifelogPhotos[photoIndex];
+            if (!photo) return;
+
+            lifelogModalImage.src = photo.dataUrl;
+            lifelogModalTime.textContent = photo.timestamp.toLocaleTimeString('ja-JP', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            lifelogModalComment.textContent = photo.analyzing ? '分析中...' : (photo.comment || '');
+            lifelogModal.classList.add('show');
+        }
+
+        // モーダルを閉じる
+        lifelogModal.addEventListener('click', () => {
+            lifelogModal.classList.remove('show');
+        });
     </script>
 </body>
 </html>
