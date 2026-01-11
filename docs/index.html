@@ -31,20 +31,9 @@
             text-align: center;
         }
 
-        .logo {
-            font-size: 4rem;
-            margin-bottom: 10px;
-        }
-
         h1 {
             font-size: 2rem;
-            margin-bottom: 10px;
-        }
-
-        .subtitle {
-            color: #888;
-            margin-bottom: 40px;
-            font-size: 1rem;
+            margin-bottom: 30px;
         }
 
         .demo-cards {
@@ -81,6 +70,66 @@
             margin-bottom: 15px;
         }
 
+        /* 太陽と地球のアニメーション */
+        .solar-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 15px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .solar-icon::before {
+            content: '';
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background:
+                radial-gradient(circle at 30% 30%, rgba(255,255,255,0.6) 0%, transparent 20%),
+                radial-gradient(circle at 70% 25%, rgba(255,200,100,0.3) 0%, transparent 15%),
+                radial-gradient(circle at 25% 70%, rgba(255,180,50,0.3) 0%, transparent 20%),
+                radial-gradient(circle at 65% 65%, rgba(255,220,100,0.2) 0%, transparent 25%),
+                radial-gradient(circle at 50% 50%, #ffe8a0 0%, #ffcc44 25%, #ff9922 55%, #dd5500 85%, #aa3300 100%);
+            box-shadow:
+                0 0 15px rgba(255, 180, 80, 0.6),
+                0 0 30px rgba(255, 140, 50, 0.4),
+                0 0 50px rgba(255, 100, 0, 0.2);
+            animation: sunGlow 3s ease-in-out infinite alternate, sunPulse 5s ease-in-out infinite;
+        }
+
+        .solar-icon::after {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background:
+                radial-gradient(circle at 30% 30%, rgba(255,255,255,0.6) 0%, transparent 50%),
+                radial-gradient(ellipse at 55% 55%, #3a7a4d 0%, transparent 50%),
+                linear-gradient(135deg, #1a5276 0%, #2980b9 50%, #1a5276 100%);
+            box-shadow:
+                0 0 4px rgba(100, 180, 255, 0.8),
+                0 0 8px rgba(50, 150, 255, 0.4);
+            animation: orbitEarth 20s linear infinite;
+        }
+
+        @keyframes sunGlow {
+            from { box-shadow: 0 0 15px rgba(255, 180, 80, 0.6), 0 0 30px rgba(255, 140, 50, 0.4), 0 0 50px rgba(255, 100, 0, 0.2); }
+            to { box-shadow: 0 0 20px rgba(255, 200, 100, 0.7), 0 0 40px rgba(255, 160, 60, 0.5), 0 0 60px rgba(255, 120, 0, 0.3); }
+        }
+
+        @keyframes sunPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+        }
+
+        @keyframes orbitEarth {
+            from { transform: rotate(0deg) translateX(35px) rotate(0deg); }
+            to { transform: rotate(360deg) translateX(35px) rotate(-360deg); }
+        }
+
         .demo-card h2 {
             font-size: 1.2rem;
             margin-bottom: 10px;
@@ -103,20 +152,28 @@
             margin-top: 15px;
         }
 
-        .features {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 40px;
+        .video-card {
+            padding: 15px;
         }
 
-        .feature {
-            background: rgba(255,255,255,0.05);
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            color: #888;
+        .video-card h2 {
+            margin-top: 10px;
+        }
+
+        .video-wrapper {
+            position: relative;
+            width: 100%;
+            padding-bottom: 56.25%;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .video-wrapper iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
         }
 
         .footer {
@@ -132,66 +189,36 @@
         .footer a:hover {
             text-decoration: underline;
         }
-
-        .tech-badges {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-top: 20px;
-            flex-wrap: wrap;
-        }
-
-        .tech-badge {
-            background: rgba(74, 222, 128, 0.1);
-            border: 1px solid rgba(74, 222, 128, 0.3);
-            color: #4ade80;
-            font-size: 0.75rem;
-            padding: 5px 12px;
-            border-radius: 15px;
-        }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="logo">🎙️</div>
         <h1>AI Necklace</h1>
-        <p class="subtitle">Gemini Live API を使用したウェアラブル音声AIアシスタント</p>
 
         <div class="demo-cards">
+            <div class="demo-card video-card">
+                <div class="video-wrapper">
+                    <iframe
+                        src="https://www.youtube.com/embed/s2f3xGuAJEs"
+                        title="AI Necklace デモ動画"
+                        frameborder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen>
+                    </iframe>
+                </div>
+                <h2>デモ動画</h2>
+            </div>
+
             <a href="ai-chat.html" class="demo-card">
-                <div class="icon">🤖</div>
+                <div class="solar-icon"></div>
                 <h2>AI Chat</h2>
-                <p>Gemini Live APIと<br>リアルタイム音声対話</p>
-                <span class="badge">おすすめ</span>
             </a>
-
-            <a href="demo.html" class="demo-card">
-                <div class="icon">💬</div>
-                <h2>Voice Demo</h2>
-                <p>PCとスマホ間で<br>音声メッセージをやり取り</p>
-                <span class="badge">Firebase連携</span>
-            </a>
-        </div>
-
-        <div class="features">
-            <span class="feature">リアルタイム音声対話</span>
-            <span class="feature">Gmail連携</span>
-            <span class="feature">ライフログ</span>
-            <span class="feature">音声メッセージ</span>
         </div>
 
         <div class="footer">
             <p>
                 <a href="https://github.com/hotaka0908/raspi-voice4" target="_blank">GitHub</a>
-                &nbsp;|&nbsp;
-                <a href="https://youtu.be/s2f3xGuAJEs" target="_blank">デモ動画</a>
             </p>
-            <div class="tech-badges">
-                <span class="tech-badge">Gemini API</span>
-                <span class="tech-badge">Cloud Functions</span>
-                <span class="tech-badge">Firebase</span>
-                <span class="tech-badge">Raspberry Pi</span>
-            </div>
         </div>
     </div>
 </body>
