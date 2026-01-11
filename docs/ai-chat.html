@@ -1279,14 +1279,8 @@
             }
         }
 
-        // Firebase設定
-        const FIREBASE_CONFIG = {
-            apiKey: "AIzaSyCi1I05bb2Z5es2JJcGfte8cEnWeBtbDVc",
-            authDomain: "raspi-111.firebaseapp.com",
-            databaseURL: "https://raspi-111-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "raspi-111",
-            storageBucket: "raspi-111.firebasestorage.app"
-        };
+        // Firebase設定（api-config.jsから読み込み）
+        const FIREBASE_CONFIG = API_CONFIG.FIREBASE_CONFIG;
 
         // 利用可能なツール（AIが呼び出せる機能）
         const availableTools = {
